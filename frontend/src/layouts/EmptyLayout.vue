@@ -1,0 +1,15 @@
+<script setup>
+// Empty layout - just renders the slot
+</script>
+
+<template>
+  <div class="empty-layout">
+    <slot />
+  </div>
+</template>
+
+<style scoped>
+.empty-layout {
+  min-height: 100vh;
+}
+</style>
