@@ -1,10 +1,11 @@
 <script setup>
-// Empty layout - just renders the slot
+import ToastContainer from '@/components/common/ToastContainer.vue'
 </script>
 
 <template>
   <div class="empty-layout">
     <slot />
+    <ToastContainer />
   </div>
 </template>
 

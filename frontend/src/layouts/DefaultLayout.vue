@@ -1,10 +1,21 @@
 <script setup>
-// Default layout with header and footer
+import AppHeader from '@/components/layout/AppHeader.vue'
+import AppFooter from '@/components/layout/AppFooter.vue'
+import MobileBottomNavigation from '@/components/layout/MobileBottomNavigation.vue'
+import ToastContainer from '@/components/common/ToastContainer.vue'
 </script>
 
 <template>
   <div class="default-layout">
-    <slot />
+    <AppHeader />
+    
+    <main class="default-layout__main">
+      <slot />
+    </main>
+    
+    <AppFooter />
+    <MobileBottomNavigation />
+    <ToastContainer />
   </div>
 </template>
 
@@ -13,5 +24,16 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.default-layout__main {
+  flex: 1;
+  padding-bottom: 60px; /* Отступ для mobile bottom nav */
+}
+
+@media (min-width: 769px) {
+  .default-layout__main {
+    padding-bottom: 0;
+  }
 }
 </style>
