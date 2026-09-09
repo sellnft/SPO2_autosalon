@@ -85,54 +85,94 @@ const routes = [
       }
     ]
   },
+  
+  // Auth routes - без path: '/'
   {
-    path: '/',
+    path: '/login',
     component: AuthLayout,
     children: [
       {
-        path: 'login',
+        path: '',
         name: 'login',
         component: () => import('@/pages/Auth/LoginPage.vue'),
         meta: { title: 'Вход', requiresGuest: true }
-      },
+      }
+    ]
+  },
+  {
+    path: '/register',
+    component: AuthLayout,
+    children: [
       {
-        path: 'register',
+        path: '',
         name: 'register',
         component: () => import('@/pages/Auth/RegisterPage.vue'),
         meta: { title: 'Регистрация', requiresGuest: true }
-      },
+      }
+    ]
+  },
+  {
+    path: '/verify-email',
+    component: AuthLayout,
+    children: [
       {
-        path: 'verify-email',
+        path: '',
         name: 'verify-email',
         component: () => import('@/pages/Auth/VerifyEmailPage.vue'),
         meta: { title: 'Подтверждение email', requiresAuth: true }
-      },
+      }
+    ]
+  },
+  {
+    path: '/forgot-password',
+    component: AuthLayout,
+    children: [
       {
-        path: 'forgot-password',
+        path: '',
         name: 'forgot-password',
         component: () => import('@/pages/Auth/ForgotPasswordPage.vue'),
         meta: { title: 'Восстановление пароля', requiresGuest: true }
-      },
+      }
+    ]
+  },
+  {
+    path: '/reset-password',
+    component: AuthLayout,
+    children: [
       {
-        path: 'reset-password',
+        path: '',
         name: 'reset-password',
         component: () => import('@/pages/Auth/ResetPasswordPage.vue'),
         meta: { title: 'Новый пароль', requiresGuest: true }
-      },
+      }
+    ]
+  },
+  {
+    path: '/2fa',
+    component: AuthLayout,
+    children: [
       {
-        path: '2fa',
+        path: '',
         name: '2fa',
         component: () => import('@/pages/Auth/TwoFactorPage.vue'),
         meta: { title: 'Двухфакторная аутентификация' }
-      },
+      }
+    ]
+  },
+  {
+    path: '/2fa/setup',
+    component: AuthLayout,
+    children: [
       {
-        path: '2fa/setup',
+        path: '',
         name: '2fa-setup',
         component: () => import('@/pages/Auth/TwoFactorSetupPage.vue'),
         meta: { title: 'Настройка 2FA', requiresAuth: true }
       }
     ]
   },
+  
+  // Admin
   {
     path: '/admin',
     component: AdminLayout,
@@ -184,30 +224,46 @@ const routes = [
       }
     ]
   },
+  
+  // Error pages
   {
-    path: '/',
+    path: '/403',
     component: EmptyLayout,
     children: [
       {
-        path: '403',
+        path: '',
         name: 'forbidden',
         component: () => import('@/pages/Errors/ForbiddenPage.vue'),
         meta: { title: 'Доступ запрещен' }
-      },
+      }
+    ]
+  },
+  {
+    path: '/404',
+    component: EmptyLayout,
+    children: [
       {
-        path: '404',
+        path: '',
         name: 'not-found',
         component: () => import('@/pages/Errors/NotFoundPage.vue'),
         meta: { title: 'Страница не найдена' }
-      },
+      }
+    ]
+  },
+  {
+    path: '/500',
+    component: EmptyLayout,
+    children: [
       {
-        path: '500',
+        path: '',
         name: 'server-error',
         component: () => import('@/pages/Errors/ServerErrorPage.vue'),
         meta: { title: 'Ошибка сервера' }
       }
     ]
   },
+  
+  // Redirect
   {
     path: '/:pathMatch(.*)*',
     redirect: '/404'
