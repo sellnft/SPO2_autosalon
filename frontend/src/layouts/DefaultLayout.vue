@@ -28,7 +28,7 @@ import ToastContainer from '@/components/common/ToastContainer.vue'
 
 .default-layout__main {
   flex: 1;
-  padding-bottom: 60px;
+  padding-bottom: calc(56px + env(safe-area-inset-bottom, 0));
 }
 
 @media (min-width: 769px) {

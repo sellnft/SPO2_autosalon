@@ -1,9 +1,15 @@
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import AppLogo from './AppLogo.vue'
+import UserMenu from './UserMenu.vue'
+import NotificationBell from './NotificationBell.vue'
+import MobileMenu from './MobileMenu.vue'
+import BaseButton from '@/components/common/BaseButton.vue'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const isMobileMenuOpen = ref(false)
@@ -14,9 +20,9 @@ const isAuthenticated = computed(() => authStore.isAuthenticated)
 
 function handleSearch() {
   if (searchQuery.value.trim()) {
-    router.push({ 
-      path: '/announcements', 
-      query: { search: searchQuery.value.trim() } 
+    router.push({
+      path: '/announcements',
+      query: { search: searchQuery.value.trim() }
     })
     searchQuery.value = ''
     isSearchOpen.value = false
@@ -26,30 +32,53 @@ function handleSearch() {
 function toggleMobileMenu() {
   isMobileMenuOpen.value = !isMobileMenuOpen.value
 }
+
+function handleKeydown(e) {
+  if (e.key === 'Escape') {
+    isMobileMenuOpen.value = false
+    isSearchOpen.value = false
+  }
+}
+
+watch(() => route.path, () => {
+  isMobileMenuOpen.value = false
+  isSearchOpen.value = false
+})
+
+watch(isMobileMenuOpen, (open) => {
+  document.body.style.overflow = open ? 'hidden' : ''
+})
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+  document.body.style.overflow = ''
+})
 </script>
 
 <template>
   <header class="app-header">
     <div class="app-header__container">
-      <!-- Logo -->
       <AppLogo class="app-header__logo" />
       
-      <!-- Desktop Navigation -->
-      <nav class="app-header__nav" aria-label="Main navigation">
+      <nav class="app-header__nav" aria-label="Основная навигация">
         <RouterLink to="/" class="app-header__nav-link">Главная</RouterLink>
         <RouterLink to="/announcements" class="app-header__nav-link">Каталог</RouterLink>
         <RouterLink to="/feedback" class="app-header__nav-link">Поддержка</RouterLink>
       </nav>
       
-      <!-- Search -->
       <div class="app-header__search">
-        <button 
-          class="app-header__search-btn"
+        <button
+          class="app-header__action"
+          aria-label="Поиск"
           @click="isSearchOpen = !isSearchOpen"
-          aria-label="Search"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M9 17A8 8 0 109 1a8 8 0 000 16zM18 18l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="2"/>
+            <path d="M15 15l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
         
@@ -62,44 +91,42 @@ function toggleMobileMenu() {
               class="app-header__search-input"
               autofocus
             />
+            <button type="button" class="app-header__search-close" @click="isSearchOpen = false" aria-label="Закрыть поиск">
+              ✕
+            </button>
           </form>
         </Transition>
       </div>
       
-      <!-- Actions -->
       <div class="app-header__actions">
-        <!-- Favorites -->
-        <RouterLink 
+        <RouterLink
           v-if="isAuthenticated"
-          to="/favourites" 
+          to="/favourites"
           class="app-header__action"
-          aria-label="Favorites"
+          aria-label="Избранное"
         >
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M10 17.5l-1.45-1.32C3.4 11.36 1 9.28 1 6.5 1 4 3 2 5.5 2c1.54 0 3.04.83 3.5 2.36C9.46 2.83 10.96 2 12.5 2 15 2 17 4 17 6.5c0 2.78-2.4 4.86-7.55 9.68L10 17.5z" stroke="currentColor" stroke-width="1.5"/>
           </svg>
-          <span class="app-header__badge">2</span>
         </RouterLink>
         
-        <!-- Notifications -->
-        <NotificationBell v-if="isAuthenticated" class="app-header__action" />
-        
-        <!-- User Menu or Auth -->
+        <NotificationBell v-if="isAuthenticated" />
         <UserMenu v-if="isAuthenticated" />
+        
         <div v-else class="app-header__auth">
           <BaseButton size="sm" variant="ghost" @click="router.push('/login')">
             Войти
           </BaseButton>
-          <BaseButton size="sm" variant="primary" @click="router.push('/register')">
+          <BaseButton size="sm" @click="router.push('/register')">
             Регистрация
           </BaseButton>
         </div>
         
-        <!-- Mobile Menu Toggle -->
-        <button 
+        <button
           class="app-header__menu-toggle"
+          :aria-expanded="isMobileMenuOpen"
+          aria-label="Меню"
           @click="toggleMobileMenu"
-          aria-label="Toggle menu"
         >
           <svg v-if="!isMobileMenuOpen" width="24" height="24" viewBox="0 0 24 24" fill="none">
             <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -111,9 +138,8 @@ function toggleMobileMenu() {
       </div>
     </div>
     
-    <!-- Mobile Menu -->
-    <MobileMenu 
-      v-if="isMobileMenuOpen" 
+    <MobileMenu
+      v-if="isMobileMenuOpen"
       @close="isMobileMenuOpen = false"
     />
   </header>
@@ -130,9 +156,9 @@ function toggleMobileMenu() {
 }
 
 .app-header__container {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 0 20px;
+  padding: 0 24px;
   height: 72px;
   display: flex;
   align-items: center;
@@ -146,17 +172,17 @@ function toggleMobileMenu() {
 .app-header__nav {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   flex: 1;
 }
 
 .app-header__nav-link {
-  padding: 8px 12px;
+  padding: 8px 14px;
   font-size: 14px;
   font-weight: 500;
   color: #374151;
   border-radius: 8px;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .app-header__nav-link:hover {
@@ -175,18 +201,21 @@ function toggleMobileMenu() {
   align-items: center;
 }
 
-.app-header__search-btn {
+.app-header__action {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 40px;
   height: 40px;
   color: #6B7280;
+  background: none;
+  border: none;
   border-radius: 10px;
-  transition: all 0.2s;
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
-.app-header__search-btn:hover {
+.app-header__action:hover {
   background: #F3F4F6;
   color: #111827;
 }
@@ -197,62 +226,43 @@ function toggleMobileMenu() {
   top: 50%;
   transform: translateY(-50%);
   width: 400px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: white;
+  border: 1.5px solid #0A84FF;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  z-index: 10;
 }
 
 .app-header__search-input {
-  width: 100%;
-  padding: 10px 16px;
+  flex: 1;
+  padding: 11px 0;
   font-size: 14px;
-  background: white;
-  border: 1.5px solid #D1D5DB;
-  border-radius: 10px;
+  background: transparent;
+  border: none;
   outline: none;
-  transition: all 0.2s;
 }
 
-.app-header__search-input:focus {
-  border-color: #0A84FF;
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.1);
+.app-header__search-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #9CA3AF;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
 }
 
 .app-header__actions {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.app-header__action {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  color: #6B7280;
-  border-radius: 10px;
-  transition: all 0.2s;
-}
-
-.app-header__action:hover {
-  background: #F3F4F6;
-  color: #111827;
-}
-
-.app-header__badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 600;
-  color: white;
-  background: #EF4444;
-  border-radius: 8px;
+  gap: 4px;
 }
 
 .app-header__auth {
@@ -267,18 +277,15 @@ function toggleMobileMenu() {
   width: 40px;
   height: 40px;
   color: #374151;
+  background: none;
+  border: none;
   border-radius: 10px;
-  transition: all 0.2s;
+  cursor: pointer;
 }
 
-.app-header__menu-toggle:hover {
-  background: #F3F4F6;
-}
-
-/* Search transition */
 .search-enter-active,
 .search-leave-active {
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
 .search-enter-from,
@@ -287,23 +294,26 @@ function toggleMobileMenu() {
   transform: translateY(-50%) scale(0.95);
 }
 
-/* Tablet */
 @media (max-width: 1024px) {
+  .app-header__container {
+    padding: 0 20px;
+    gap: 16px;
+  }
+  
   .app-header__nav {
     display: none;
   }
   
   .app-header__search-form {
-    width: 300px;
+    width: 320px;
   }
 }
 
-/* Mobile */
 @media (max-width: 768px) {
   .app-header__container {
     height: 60px;
-    gap: 12px;
     padding: 0 16px;
+    gap: 8px;
   }
   
   .app-header__search {
@@ -313,11 +323,20 @@ function toggleMobileMenu() {
   
   .app-header__search-form {
     position: fixed;
-    left: 16px;
-    right: 16px;
     top: 60px;
+    left: 0;
+    right: 0;
+    width: 100%;
     transform: none;
-    width: auto;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    padding: 0 16px;
+  }
+  
+  .app-header__search-input {
+    padding: 14px 0;
   }
   
   .app-header__auth {
@@ -329,8 +348,8 @@ function toggleMobileMenu() {
   }
   
   .app-header__action {
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
   }
 }
 </style>

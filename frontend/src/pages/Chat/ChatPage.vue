@@ -17,7 +17,6 @@ async function loadChats() {
   try {
     await chatStore.fetchChats()
     
-    // Открываем чат из URL если есть
     if (route.params.id) {
       await chatStore.selectChat(route.params.id)
     }
@@ -59,10 +58,11 @@ onUnmounted(() => {
 <template>
   <div class="chat-page">
     <div class="container">
-      <Breadcrumbs />
+      <div class="chat-page__breadcrumbs">
+        <Breadcrumbs />
+      </div>
       
       <div class="chat-page__container">
-        <!-- Chat List -->
         <aside
           :class="[
             'chat-page__list',
@@ -72,7 +72,6 @@ onUnmounted(() => {
           <ChatList @select="handleSelectChat" />
         </aside>
         
-        <!-- Chat Window -->
         <main
           :class="[
             'chat-page__window',
@@ -91,6 +90,10 @@ onUnmounted(() => {
 .chat-page {
   padding: 20px 0;
   height: calc(100vh - 72px);
+}
+
+.chat-page__breadcrumbs {
+  margin-bottom: 16px;
 }
 
 .chat-page__container {
@@ -116,14 +119,24 @@ onUnmounted(() => {
 /* Mobile */
 @media (max-width: 768px) {
   .chat-page {
-    padding: 12px 0;
-    height: calc(100vh - 60px);
+    padding: 0;
+    height: calc(100vh - 60px - 56px - env(safe-area-inset-bottom, 0px));
+  }
+
+  .chat-page__breadcrumbs {
+    display: none;
   }
   
   .chat-page__container {
     grid-template-columns: 1fr;
-    height: calc(100vh - 100px);
-    border-radius: 12px;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+    gap: 0;
+  }
+  
+  .chat-page__list {
+    border-right: none;
   }
   
   .chat-page__list--hidden-mobile {

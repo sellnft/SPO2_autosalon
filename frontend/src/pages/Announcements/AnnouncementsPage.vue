@@ -103,8 +103,7 @@ async function loadAnnouncements() {
   } catch (err) {
     error.value = err.message
   } finally {
-    loading.value = false
-  }
+    loading.value = false  }
 }
 
 function handleSortChange(sortValue) {
@@ -131,7 +130,6 @@ watch(() => route.query, () => {
 <template>
   <div class="announcements-page">
     <div class="container">
-      <!-- Header -->
       <div class="announcements-page__header">
         <h1 class="announcements-page__title">Каталог автомобилей</h1>
         <p class="announcements-page__count">
@@ -139,10 +137,9 @@ watch(() => route.query, () => {
         </p>
       </div>
       
-      <!-- Mobile Filter Button -->
       <div class="announcements-page__mobile-filter">
         <BaseButton variant="outline" block @click="isFilterMobileOpen = true">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
             <path d="M3 5h14M5 10h10M8 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
           Фильтры
@@ -152,7 +149,6 @@ watch(() => route.query, () => {
         </BaseButton>
       </div>
       
-      <!-- Active Filters -->
       <div v-if="activeFilters.length" class="announcements-page__active-filters">
         <button
           v-for="filter in activeFilters"
@@ -171,7 +167,6 @@ watch(() => route.query, () => {
         </button>
       </div>
       
-      <!-- Sort -->
       <div class="announcements-page__sort">
         <AnnouncementSort
           :model-value="`${announcementsStore.filters.sortBy}-${announcementsStore.filters.sortOrder}`"
@@ -179,9 +174,7 @@ watch(() => route.query, () => {
         />
       </div>
       
-      <!-- Content -->
       <div class="announcements-page__content">
-        <!-- Desktop Filters -->
         <aside class="announcements-page__sidebar">
           <AnnouncementFilters
             :filters="announcementsStore.filters"
@@ -190,14 +183,11 @@ watch(() => route.query, () => {
           />
         </aside>
         
-        <!-- Results -->
         <div class="announcements-page__results">
-          <!-- Loading -->
           <div v-if="loading" class="announcements-page__grid">
             <AnnouncementSkeleton v-for="i in 6" :key="i" />
           </div>
           
-          <!-- Error -->
           <ErrorMessage
             v-else-if="error"
             :message="error"
@@ -205,7 +195,6 @@ watch(() => route.query, () => {
             @retry="loadAnnouncements"
           />
           
-          <!-- Empty -->
           <EmptyState
             v-else-if="!announcementsStore.announcements.length"
             icon="search"
@@ -213,7 +202,6 @@ watch(() => route.query, () => {
             description="Попробуйте изменить параметры поиска"
           />
           
-          <!-- Results -->
           <template v-else>
             <AnnouncementGrid :announcements="announcementsStore.announcements" />
             
@@ -228,7 +216,6 @@ watch(() => route.query, () => {
       </div>
     </div>
     
-    <!-- Mobile Filters -->
     <AnnouncementFilterMobile
       v-model="isFilterMobileOpen"
       :filters="announcementsStore.filters"
@@ -262,6 +249,9 @@ watch(() => route.query, () => {
 
 .announcements-page__mobile-filter {
   display: none;
+  position: sticky;
+  top: 60px;
+  z-index: 40;
   margin-bottom: 16px;
 }
 
@@ -295,7 +285,9 @@ watch(() => route.query, () => {
   font-weight: 500;
   color: #0A84FF;
   background: #F0F7FF;
+  border: none;
   border-radius: 8px;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -308,6 +300,9 @@ watch(() => route.query, () => {
   font-size: 13px;
   font-weight: 500;
   color: #6B7280;
+  background: none;
+  border: none;
+  cursor: pointer;
   transition: color 0.2s;
 }
 
@@ -347,6 +342,10 @@ watch(() => route.query, () => {
 }
 
 @media (max-width: 1024px) {
+  .announcements-page {
+    padding: 20px 0;
+  }
+
   .announcements-page__sidebar {
     display: none;
   }
@@ -358,6 +357,10 @@ watch(() => route.query, () => {
   .announcements-page__content {
     grid-template-columns: 1fr;
   }
+
+  .announcements-page__title {
+    font-size: 24px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -367,10 +370,6 @@ watch(() => route.query, () => {
   
   .announcements-page__sort {
     justify-content: flex-start;
-  }
-  
-  .announcements-page__title {
-    font-size: 24px;
   }
 }
 </style>

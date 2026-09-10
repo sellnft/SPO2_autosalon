@@ -26,22 +26,30 @@ function handleClick() {
 </script>
 
 <template>
-  <article class="announcement-card" @click="handleClick">
+  <article
+    class="announcement-card"
+    tabindex="0"
+    role="article"
+    @click="handleClick"
+    @keydown.enter="handleClick"
+  >
     <div class="announcement-card__image-wrapper">
-      <img 
-        :src="announcement.photos[0]" 
-        :alt="announcement.title"
+      <img
+        :src="announcement.photos[0]"
+        :alt="`${announcement.brand} ${announcement.model}`"
         class="announcement-card__image"
         loading="lazy"
+        decoding="async"
+        width="400"
+        height="300"
       />
       
-      <FavouriteButton 
+      <FavouriteButton
         :announcement-id="announcement.id"
-        :is-favourite="isFavourite"
         class="announcement-card__favourite"
       />
       
-      <span 
+      <span
         v-if="announcement.status === 'pending'"
         class="announcement-card__status"
       >
@@ -68,7 +76,7 @@ function handleClick() {
       
       <div class="announcement-card__footer">
         <span class="announcement-card__location">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
             <path d="M7 13s-5-3.5-5-8a5 5 0 0110 0c0 4.5-5 8-5 8z" stroke="currentColor" stroke-width="1.5"/>
             <circle cx="7" cy="5" r="1.5" stroke="currentColor" stroke-width="1.5"/>
           </svg>
@@ -76,7 +84,7 @@ function handleClick() {
         </span>
         
         <span class="announcement-card__views">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
             <path d="M1 7s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" stroke="currentColor" stroke-width="1.5"/>
             <circle cx="7" cy="7" r="1.5" stroke="currentColor" stroke-width="1.5"/>
           </svg>
@@ -94,7 +102,9 @@ function handleClick() {
   border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .announcement-card:hover {
@@ -103,17 +113,23 @@ function handleClick() {
   transform: translateY(-2px);
 }
 
+.announcement-card:focus-visible {
+  outline: 2px solid #0A84FF;
+  outline-offset: 2px;
+}
+
 .announcement-card__image-wrapper {
   position: relative;
   aspect-ratio: 4/3;
   overflow: hidden;
+  background: #F3F4F6;
 }
 
 .announcement-card__image {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s;
+  transition: transform 0.4s ease;
 }
 
 .announcement-card:hover .announcement-card__image {
@@ -124,13 +140,14 @@ function handleClick() {
   position: absolute;
   top: 12px;
   right: 12px;
+  z-index: 1;
 }
 
 .announcement-card__status {
   position: absolute;
   top: 12px;
   left: 12px;
-  padding: 4px 8px;
+  padding: 4px 10px;
   font-size: 11px;
   font-weight: 600;
   color: #92400e;
@@ -140,13 +157,22 @@ function handleClick() {
 
 .announcement-card__content {
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 
 .announcement-card__title {
   margin-bottom: 8px;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   color: #111827;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .announcement-card__price {
@@ -154,15 +180,18 @@ function handleClick() {
   font-size: 20px;
   font-weight: 700;
   color: #0A84FF;
+  line-height: 1.2;
 }
 
 .announcement-card__specs {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: 6px;
+  margin-bottom: auto;
+  padding-bottom: 12px;
   font-size: 13px;
   color: #6B7280;
+  flex-wrap: wrap;
 }
 
 .announcement-card__dot {
@@ -184,5 +213,15 @@ function handleClick() {
   gap: 4px;
   font-size: 12px;
   color: #9CA3AF;
+}
+
+@media (max-width: 480px) {
+  .announcement-card__title {
+    font-size: 16px;
+  }
+  
+  .announcement-card__price {
+    font-size: 18px;
+  }
 }
 </style>
