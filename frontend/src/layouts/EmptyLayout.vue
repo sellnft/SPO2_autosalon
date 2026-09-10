@@ -4,7 +4,7 @@ import ToastContainer from '@/components/common/ToastContainer.vue'
 
 <template>
   <div class="empty-layout">
-    <slot />
+    <router-view />
     <ToastContainer />
   </div>
 </template>

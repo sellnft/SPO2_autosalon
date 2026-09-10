@@ -19,7 +19,7 @@ function toggleSidebar() {
       <AdminHeader @toggle-sidebar="toggleSidebar" />
       
       <main class="admin-layout__main">
-        <slot />
+        <router-view />
       </main>
     </div>
     

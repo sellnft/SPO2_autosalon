@@ -10,7 +10,7 @@ import ToastContainer from '@/components/common/ToastContainer.vue'
     <AppHeader />
     
     <main class="default-layout__main">
-      <slot />
+      <router-view />
     </main>
     
     <AppFooter />
@@ -28,7 +28,7 @@ import ToastContainer from '@/components/common/ToastContainer.vue'
 
 .default-layout__main {
   flex: 1;
-  padding-bottom: 60px; /* Отступ для mobile bottom nav */
+  padding-bottom: 60px;
 }
 
 @media (min-width: 769px) {
