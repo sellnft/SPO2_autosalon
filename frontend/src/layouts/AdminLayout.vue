@@ -1,26 +1,34 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AdminSidebar from '@/components/admin/AdminSidebar.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 
 const route = useRoute()
-
 const isSidebarOpen = ref(true)
 
 function toggleSidebar() {
   isSidebarOpen.value = !isSidebarOpen.value
 }
 
-// На мобильных — сайдбар закрыт по умолчанию
-onMounted(() => {
+function handleResize() {
   if (window.innerWidth < 1024) {
     isSidebarOpen.value = false
+  } else {
+    isSidebarOpen.value = true
   }
+}
+
+onMounted(() => {
+  handleResize()
+  window.addEventListener('resize', handleResize)
 })
 
-// Закрываем сайдбар на мобильных при навигации
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+})
+
 watch(() => route.path, () => {
   if (window.innerWidth < 1024) {
     isSidebarOpen.value = false
@@ -50,7 +58,6 @@ watch(() => route.path, () => {
   min-height: 100vh;
   background: #0F0F10;
   color: #E5E7EB;
-  font-family: var(--font-family-body);
 }
 
 .admin-layout__content {

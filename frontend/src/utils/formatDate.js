@@ -3,6 +3,11 @@ export function formatDate(date, format = 'default') {
   
   const d = new Date(date)
   
+  // Защита от invalid date
+  if (isNaN(d.getTime())) {
+    return ''
+  }
+  
   if (format === 'relative') {
     const now = new Date()
     const diff = now - d
@@ -20,9 +25,9 @@ export function formatDate(date, format = 'default') {
   }
   
   if (format === 'time') {
-    return d.toLocaleTimeString('ru-RU', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return d.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
   

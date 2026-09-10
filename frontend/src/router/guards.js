@@ -16,13 +16,13 @@ export function setupRouterGuards(router) {
     
     // Требуется авторизация
     if (requiresAuth && !authStore.isAuthenticated) {
-      return next({ 
-        name: 'login', 
-        query: { redirect: to.fullPath } 
+      return next({
+        name: 'login',
+        query: { redirect: to.fullPath }
       })
     }
     
-    // Только для гостей (не авторизованных)
+    // Только для гостей
     if (requiresGuest && authStore.isAuthenticated) {
       return next({ name: 'home' })
     }
@@ -32,8 +32,13 @@ export function setupRouterGuards(router) {
       return next({ name: 'forbidden' })
     }
     
-    // Требуется подтвержденный email
-    if (requiresVerifiedEmail && !authStore.user?.emailVerified) {
+    // Требуется подтверждённый email
+    if (
+      requiresVerifiedEmail &&
+      authStore.isAuthenticated &&
+      authStore.user &&
+      !authStore.user.emailVerified
+    ) {
       return next({ name: 'verify-email' })
     }
     
@@ -41,8 +46,8 @@ export function setupRouterGuards(router) {
   })
   
   router.afterEach((to) => {
-    document.title = to.meta.title 
-      ? `${to.meta.title} - Auto Platform` 
+    document.title = to.meta.title
+      ? `${to.meta.title} - Auto Platform`
       : 'Auto Platform'
   })
 }

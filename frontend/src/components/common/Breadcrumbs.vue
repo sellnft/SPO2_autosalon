@@ -14,17 +14,25 @@ const route = useRoute()
 const breadcrumbs = computed(() => {
   if (props.items.length) return props.items
   
-  const items = []
+  const items = [{ label: 'Главная', to: '/' }]
+  
   const pathSegments = route.path.split('/').filter(Boolean)
   
   let currentPath = ''
-  items.push({ label: 'Главная', to: '/' })
   
-  pathSegments.forEach((segment, index) => {
-    currentPath += `/${segment}`
-    const isLast = index === pathSegments.length - 1
+  route.matched.forEach((matchedRoute, index) => {
+    const segment = pathSegments[index]
+    if (!segment) return
     
-    const label = route.matched[index]?.meta?.title || segment
+    currentPath += `/${segment}`
+    
+    // Пропускаем динамические id
+    if (/^\d+$/.test(segment)) {
+      return
+    }
+    
+    const isLast = index === route.matched.length - 1
+    const label = matchedRoute.meta?.title || segment
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
@@ -40,7 +48,7 @@ const breadcrumbs = computed(() => {
 </script>
 
 <template>
-  <nav class="breadcrumbs" aria-label="Breadcrumb">
+  <nav v-if="breadcrumbs.length > 1" class="breadcrumbs" aria-label="Breadcrumb">
     <ol class="breadcrumbs__list">
       <li
         v-for="(item, index) in breadcrumbs"

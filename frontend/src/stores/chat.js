@@ -3,35 +3,37 @@ import { ref, computed } from 'vue'
 import { chatApi } from '@/services/api/chatApi'
 import { chatSocket } from '@/services/websocket/chatSocket'
 
+let wsHandler = null
+
 export const useChatStore = defineStore('chat', () => {
   const chats = ref([])
   const currentChatId = ref(null)
-  const messages = ref({}) // { [chatId]: Message[] }
+  const messages = ref({})
   const loading = ref(false)
   const sending = ref(false)
   const error = ref(null)
   const searchQuery = ref('')
   const socketConnected = ref(false)
   
-  const currentChat = computed(() => 
+  const currentChat = computed(() =>
     chats.value.find(c => c.id === currentChatId.value) || null
   )
   
-  const currentMessages = computed(() => 
+  const currentMessages = computed(() =>
     messages.value[currentChatId.value] || []
   )
   
   const filteredChats = computed(() => {
     if (!searchQuery.value.trim()) return chats.value
     const q = searchQuery.value.toLowerCase()
-    return chats.value.filter(c => 
+    return chats.value.filter(c =>
       c.sellerName?.toLowerCase().includes(q) ||
       c.announcementTitle?.toLowerCase().includes(q) ||
       c.lastMessage?.toLowerCase().includes(q)
     )
   })
   
-  const totalUnread = computed(() => 
+  const totalUnread = computed(() =>
     chats.value.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0)
   )
   
@@ -60,7 +62,6 @@ export const useChatStore = defineStore('chat', () => {
       const msgs = await chatApi.getMessages(chatId)
       messages.value[chatId] = msgs
       
-      // Отмечаем прочитанным
       const chat = chats.value.find(c => c.id === Number(chatId))
       if (chat) {
         chat.unreadCount = 0
@@ -84,7 +85,6 @@ export const useChatStore = defineStore('chat', () => {
     sending.value = true
     const chatId = currentChatId.value
     
-    // Optimistic UI - добавляем сообщение сразу
     const optimisticMessage = {
       id: `temp-${Date.now()}`,
       chatId,
@@ -103,7 +103,6 @@ export const useChatStore = defineStore('chat', () => {
     try {
       const sentMessage = await chatApi.sendMessage(chatId, content)
       
-      // Заменяем оптимистичное сообщение реальным
       const index = messages.value[chatId].findIndex(
         m => m.id === optimisticMessage.id
       )
@@ -111,7 +110,6 @@ export const useChatStore = defineStore('chat', () => {
         messages.value[chatId][index] = { ...sentMessage, status: 'sent' }
       }
       
-      // Обновляем последнее сообщение в чате
       const chat = chats.value.find(c => c.id === chatId)
       if (chat) {
         chat.lastMessage = content
@@ -120,7 +118,6 @@ export const useChatStore = defineStore('chat', () => {
       
       return sentMessage
     } catch (err) {
-      // Помечаем как failed
       const index = messages.value[chatId].findIndex(
         m => m.id === optimisticMessage.id
       )
@@ -135,8 +132,7 @@ export const useChatStore = defineStore('chat', () => {
   }
   
   async function createOrOpenChat(announcementId, sellerId) {
-    // Ищем существующий чат
-    const existing = chats.value.find(c => 
+    const existing = chats.value.find(c =>
       c.announcementId === Number(announcementId)
     )
     
@@ -145,7 +141,6 @@ export const useChatStore = defineStore('chat', () => {
       return existing
     }
     
-    // Создаём новый
     const chat = await chatApi.createChat(announcementId, sellerId)
     chats.value.unshift(chat)
     await selectChat(chat.id)
@@ -156,36 +151,39 @@ export const useChatStore = defineStore('chat', () => {
     if (socketConnected.value) return
     
     chatSocket.connect()
-    chatSocket.onMessage((message) => {
+    
+    wsHandler = (message) => {
       const chatId = message.chatId
       
       if (!messages.value[chatId]) {
         messages.value[chatId] = []
       }
       
-      // Не дублируем
       const exists = messages.value[chatId].some(m => m.id === message.id)
       if (!exists) {
         messages.value[chatId].push(message)
       }
       
-      // Обновляем чат
       const chat = chats.value.find(c => c.id === chatId)
       if (chat) {
         chat.lastMessage = message.content
         chat.lastMessageAt = message.createdAt
         
-        // Увеличиваем счётчик если чат не открыт
         if (currentChatId.value !== chatId) {
           chat.unreadCount = (chat.unreadCount || 0) + 1
         }
       }
-    })
+    }
     
+    chatSocket.onMessage(wsHandler)
     socketConnected.value = true
   }
   
   function disconnectWebSocket() {
+    if (wsHandler) {
+      chatSocket.offMessage(wsHandler)
+      wsHandler = null
+    }
     chatSocket.disconnect()
     socketConnected.value = false
   }

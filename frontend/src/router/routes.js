@@ -24,7 +24,7 @@ const routes = [
         path: 'announcements/create',
         name: 'announcement-create',
         component: () => import('@/pages/Announcements/CreateAnnouncementPage.vue'),
-        meta: { title: 'Создать объявление', requiresAuth: true, requiresVerifiedEmail: true }
+        meta: { title: 'Создать объявление', requiresAuth: true }
       },
       {
         path: 'announcements/:id',
@@ -65,6 +65,36 @@ const routes = [
         meta: { title: 'Мои объявления', requiresAuth: true }
       },
       {
+        path: 'profile/subscriptions',
+        name: 'my-subscriptions',
+        component: () => import('@/pages/Profile/MySubscriptionsPage.vue'),
+        meta: { title: 'Подписки', requiresAuth: true }
+      },
+      {
+        path: 'profile/saved-searches',
+        name: 'saved-searches',
+        component: () => import('@/pages/Profile/SavedSearchesPage.vue'),
+        meta: { title: 'Сохранённые поиски', requiresAuth: true }
+      },
+      {
+        path: 'profile/notifications',
+        name: 'notification-settings',
+        component: () => import('@/pages/Profile/NotificationSettingsPage.vue'),
+        meta: { title: 'Настройки уведомлений', requiresAuth: true }
+      },
+      {
+        path: 'profile/security',
+        name: 'security',
+        component: () => import('@/pages/Profile/SecurityPage.vue'),
+        meta: { title: 'Безопасность', requiresAuth: true }
+      },
+      {
+        path: 'profile/sessions',
+        name: 'my-sessions',
+        component: () => import('@/pages/Profile/MySessionsPage.vue'),
+        meta: { title: 'Активные сессии', requiresAuth: true }
+      },
+      {
         path: 'chat',
         name: 'chat',
         component: () => import('@/pages/Chat/ChatPage.vue'),
@@ -82,11 +112,18 @@ const routes = [
         name: 'feedback',
         component: () => import('@/pages/Feedback/FeedbackPage.vue'),
         meta: { title: 'Поддержка', requiresAuth: false }
+      },
+      {
+        path: 'feedback/:id',
+        name: 'feedback-detail',
+        component: () => import('@/pages/Feedback/FeedbackDetailsPage.vue'),
+        meta: { title: 'Обращение', requiresAuth: true },
+        props: true
       }
     ]
   },
-  
-  // Auth routes - без path: '/'
+
+  // Auth routes
   {
     path: '/login',
     component: AuthLayout,
@@ -119,7 +156,7 @@ const routes = [
         path: '',
         name: 'verify-email',
         component: () => import('@/pages/Auth/VerifyEmailPage.vue'),
-        meta: { title: 'Подтверждение email', requiresAuth: true }
+        meta: { title: 'Подтверждение email' }
       }
     ]
   },
@@ -171,7 +208,7 @@ const routes = [
       }
     ]
   },
-  
+
   // Admin
   {
     path: '/admin',
@@ -217,6 +254,13 @@ const routes = [
         meta: { title: 'Обращения' }
       },
       {
+        path: 'feedback/:id',
+        name: 'admin-feedback-detail',
+        component: () => import('@/pages/Admin/AdminFeedbackDetailsPage.vue'),
+        meta: { title: 'Обращение' },
+        props: true
+      },
+      {
         path: 'audit-logs',
         name: 'admin-audit-logs',
         component: () => import('@/pages/Admin/AdminAuditLogsPage.vue'),
@@ -224,7 +268,7 @@ const routes = [
       }
     ]
   },
-  
+
   // Error pages
   {
     path: '/403',
@@ -262,8 +306,8 @@ const routes = [
       }
     ]
   },
-  
-  // Redirect
+
+  // Fallback
   {
     path: '/:pathMatch(.*)*',
     redirect: '/404'

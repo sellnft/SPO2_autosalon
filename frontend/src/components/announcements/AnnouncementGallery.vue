@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
   photos: {
@@ -10,7 +10,12 @@ const props = defineProps({
 
 const activeIndex = ref(0)
 
-const currentPhoto = computed(() => props.photos[activeIndex.value])
+const currentPhoto = computed(() => props.photos[activeIndex.value] || '')
+
+// Сброс индекса при смене photos
+watch(() => props.photos, () => {
+  activeIndex.value = 0
+}, { deep: true })
 
 function nextPhoto() {
   if (activeIndex.value < props.photos.length - 1) {
@@ -30,19 +35,24 @@ function setPhoto(index) {
 </script>
 
 <template>
-  <div class="announcement-gallery">
+  <div v-if="photos.length" class="announcement-gallery">
     <div class="announcement-gallery__main">
-      <img 
-        :src="currentPhoto" 
+      <img
+        v-if="currentPhoto"
+        :src="currentPhoto"
         alt="Автомобиль"
         class="announcement-gallery__image"
       />
+      <div v-else class="announcement-gallery__placeholder">
+        Нет фото
+      </div>
       
       <button
         v-if="photos.length > 1"
         class="announcement-gallery__nav announcement-gallery__nav--prev"
-        @click="prevPhoto"
         :disabled="activeIndex === 0"
+        aria-label="Предыдущее фото"
+        @click="prevPhoto"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -52,15 +62,16 @@ function setPhoto(index) {
       <button
         v-if="photos.length > 1"
         class="announcement-gallery__nav announcement-gallery__nav--next"
-        @click="nextPhoto"
         :disabled="activeIndex === photos.length - 1"
+        aria-label="Следующее фото"
+        @click="nextPhoto"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
           <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
       
-      <span class="announcement-gallery__counter">
+      <span v-if="photos.length > 1" class="announcement-gallery__counter">
         {{ activeIndex + 1 }} / {{ photos.length }}
       </span>
     </div>
@@ -73,11 +84,16 @@ function setPhoto(index) {
           'announcement-gallery__thumbnail',
           { 'announcement-gallery__thumbnail--active': index === activeIndex }
         ]"
+        :aria-label="`Фото ${index + 1}`"
         @click="setPhoto(index)"
       >
-        <img :src="photo" :alt="`Фото ${index + 1}`" />
+        <img :src="photo" :alt="`Фото ${index + 1}`" loading="lazy" />
       </button>
     </div>
+  </div>
+  
+  <div v-else class="announcement-gallery__empty">
+    Нет фотографий
   </div>
 </template>
 
@@ -102,6 +118,15 @@ function setPhoto(index) {
   object-fit: cover;
 }
 
+.announcement-gallery__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #9CA3AF;
+  font-size: 14px;
+}
+
 .announcement-gallery__nav {
   position: absolute;
   top: 50%;
@@ -113,7 +138,9 @@ function setPhoto(index) {
   height: 40px;
   color: white;
   background: rgba(0, 0, 0, 0.5);
+  border: none;
   border-radius: 50%;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -159,6 +186,10 @@ function setPhoto(index) {
   border-radius: 8px;
   overflow: hidden;
   opacity: 0.6;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  background: none;
   transition: all 0.2s;
 }
 
@@ -171,5 +202,16 @@ function setPhoto(index) {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.announcement-gallery__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 16/10;
+  background: #F3F4F6;
+  border-radius: 16px;
+  color: #9CA3AF;
+  font-size: 14px;
 }
 </style>
