@@ -10,10 +10,20 @@ export const useAdminStore = defineStore('admin', () => {
   const dashboardStats = ref(null)
   const loading = ref(false)
   const error = ref(null)
-  
+
   const totalUsers = computed(() => users.value.length)
   const totalAnnouncements = computed(() => announcements.value.length)
-  
+
+  const pendingAnnouncements = computed(() => 
+    announcements.value.filter(a => a.status === 'pending')
+  )
+
+  const openFeedback = computed(() =>
+    feedback.value.filter(f => 
+      ['open', 'in_progress', 'waiting_user'].includes(f.status)
+    )
+  )
+
   async function fetchDashboardStats() {
     loading.value = true
     try {
@@ -26,7 +36,7 @@ export const useAdminStore = defineStore('admin', () => {
       loading.value = false
     }
   }
-  
+
   async function fetchUsers() {
     loading.value = true
     try {
@@ -39,7 +49,7 @@ export const useAdminStore = defineStore('admin', () => {
       loading.value = false
     }
   }
-  
+
   async function fetchAnnouncements() {
     loading.value = true
     try {
@@ -52,16 +62,31 @@ export const useAdminStore = defineStore('admin', () => {
       loading.value = false
     }
   }
-  
+
   async function moderateAnnouncement(id, action) {
     try {
-      return await adminApi.moderateAnnouncement(id, action)
+      const result = await adminApi.moderateAnnouncement(id, action)
+      
+      // Обновляем локально
+      const index = announcements.value.findIndex(a => a.id === Number(id))
+      if (index !== -1) {
+        const newStatus = action === 'approve' ? 'active' 
+          : action === 'reject' ? 'rejected' 
+          : action === 'block' ? 'blocked' 
+          : announcements.value[index].status
+        announcements.value[index] = { 
+          ...announcements.value[index], 
+          status: newStatus 
+        }
+      }
+      
+      return result
     } catch (err) {
       error.value = err.message
       throw err
     }
   }
-  
+
   async function fetchFeedback() {
     loading.value = true
     try {
@@ -74,7 +99,7 @@ export const useAdminStore = defineStore('admin', () => {
       loading.value = false
     }
   }
-  
+
   async function fetchAuditLogs() {
     loading.value = true
     try {
@@ -87,7 +112,7 @@ export const useAdminStore = defineStore('admin', () => {
       loading.value = false
     }
   }
-  
+
   return {
     users,
     announcements,
@@ -98,6 +123,8 @@ export const useAdminStore = defineStore('admin', () => {
     error,
     totalUsers,
     totalAnnouncements,
+    pendingAnnouncements,
+    openFeedback,
     fetchDashboardStats,
     fetchUsers,
     fetchAnnouncements,

@@ -1,14 +1,31 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import AdminSidebar from '@/components/admin/AdminSidebar.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
+
+const route = useRoute()
 
 const isSidebarOpen = ref(true)
 
 function toggleSidebar() {
   isSidebarOpen.value = !isSidebarOpen.value
 }
+
+// На мобильных — сайдбар закрыт по умолчанию
+onMounted(() => {
+  if (window.innerWidth < 1024) {
+    isSidebarOpen.value = false
+  }
+})
+
+// Закрываем сайдбар на мобильных при навигации
+watch(() => route.path, () => {
+  if (window.innerWidth < 1024) {
+    isSidebarOpen.value = false
+  }
+})
 </script>
 
 <template>
@@ -29,8 +46,11 @@ function toggleSidebar() {
 
 <style scoped>
 .admin-layout {
-  min-height: 100vh;
   display: flex;
+  min-height: 100vh;
+  background: #0F0F10;
+  color: #E5E7EB;
+  font-family: var(--font-family-body);
 }
 
 .admin-layout__content {
@@ -43,13 +63,12 @@ function toggleSidebar() {
 .admin-layout__main {
   flex: 1;
   padding: 24px;
-  background: #F9FAFB;
   overflow-y: auto;
 }
 
 @media (max-width: 1024px) {
-  .admin-layout {
-    flex-direction: column;
+  .admin-layout__main {
+    padding: 16px;
   }
 }
 </style>
