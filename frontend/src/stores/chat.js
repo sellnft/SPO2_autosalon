@@ -5,10 +5,31 @@ import { chatSocket } from '@/services/websocket/chatSocket'
 
 export const useChatStore = defineStore('chat', () => {
   const chats = ref([])
-  const currentChat = ref(null)
-  const messages = ref({})
+  const currentChatId = ref(null)
+  const messages = ref({}) // { [chatId]: Message[] }
   const loading = ref(false)
+  const sending = ref(false)
   const error = ref(null)
+  const searchQuery = ref('')
+  const socketConnected = ref(false)
+  
+  const currentChat = computed(() => 
+    chats.value.find(c => c.id === currentChatId.value) || null
+  )
+  
+  const currentMessages = computed(() => 
+    messages.value[currentChatId.value] || []
+  )
+  
+  const filteredChats = computed(() => {
+    if (!searchQuery.value.trim()) return chats.value
+    const q = searchQuery.value.toLowerCase()
+    return chats.value.filter(c => 
+      c.sellerName?.toLowerCase().includes(q) ||
+      c.announcementTitle?.toLowerCase().includes(q) ||
+      c.lastMessage?.toLowerCase().includes(q)
+    )
+  })
   
   const totalUnread = computed(() => 
     chats.value.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0)
@@ -16,6 +37,7 @@ export const useChatStore = defineStore('chat', () => {
   
   async function fetchChats() {
     loading.value = true
+    error.value = null
     try {
       chats.value = await chatApi.getChats()
       return chats.value
@@ -28,70 +50,174 @@ export const useChatStore = defineStore('chat', () => {
   }
   
   async function fetchMessages(chatId) {
-    loading.value = true
+    if (!chatId) return
+    
     try {
-      messages.value[chatId] = await chatApi.getMessages(chatId)
-      return messages.value[chatId]
+      if (!messages.value[chatId]) {
+        messages.value[chatId] = []
+      }
+      
+      const msgs = await chatApi.getMessages(chatId)
+      messages.value[chatId] = msgs
+      
+      // Отмечаем прочитанным
+      const chat = chats.value.find(c => c.id === Number(chatId))
+      if (chat) {
+        chat.unreadCount = 0
+      }
+      
+      return msgs
     } catch (err) {
+      error.value = err.message
+      throw err
+    }
+  }
+  
+  async function selectChat(chatId) {
+    currentChatId.value = Number(chatId)
+    await fetchMessages(chatId)
+  }
+  
+  async function sendMessage(content) {
+    if (!currentChatId.value || !content.trim()) return
+    
+    sending.value = true
+    const chatId = currentChatId.value
+    
+    // Optimistic UI - добавляем сообщение сразу
+    const optimisticMessage = {
+      id: `temp-${Date.now()}`,
+      chatId,
+      senderId: 1,
+      content,
+      createdAt: new Date().toISOString(),
+      read: false,
+      status: 'sending'
+    }
+    
+    if (!messages.value[chatId]) {
+      messages.value[chatId] = []
+    }
+    messages.value[chatId].push(optimisticMessage)
+    
+    try {
+      const sentMessage = await chatApi.sendMessage(chatId, content)
+      
+      // Заменяем оптимистичное сообщение реальным
+      const index = messages.value[chatId].findIndex(
+        m => m.id === optimisticMessage.id
+      )
+      if (index !== -1) {
+        messages.value[chatId][index] = { ...sentMessage, status: 'sent' }
+      }
+      
+      // Обновляем последнее сообщение в чате
+      const chat = chats.value.find(c => c.id === chatId)
+      if (chat) {
+        chat.lastMessage = content
+        chat.lastMessageAt = new Date().toISOString()
+      }
+      
+      return sentMessage
+    } catch (err) {
+      // Помечаем как failed
+      const index = messages.value[chatId].findIndex(
+        m => m.id === optimisticMessage.id
+      )
+      if (index !== -1) {
+        messages.value[chatId][index].status = 'failed'
+      }
       error.value = err.message
       throw err
     } finally {
-      loading.value = false
+      sending.value = false
     }
   }
   
-  async function sendMessage(chatId, content) {
-    try {
-      const message = await chatApi.sendMessage(chatId, content)
-      if (!messages.value[chatId]) {
-        messages.value[chatId] = []
-      }
-      messages.value[chatId].push(message)
-      return message
-    } catch (err) {
-      error.value = err.message
-      throw err
+  async function createOrOpenChat(announcementId, sellerId) {
+    // Ищем существующий чат
+    const existing = chats.value.find(c => 
+      c.announcementId === Number(announcementId)
+    )
+    
+    if (existing) {
+      await selectChat(existing.id)
+      return existing
     }
-  }
-  
-  async function createChat(announcementId, sellerId) {
-    try {
-      const chat = await chatApi.createChat(announcementId, sellerId)
-      chats.value.unshift(chat)
-      return chat
-    } catch (err) {
-      error.value = err.message
-      throw err
-    }
+    
+    // Создаём новый
+    const chat = await chatApi.createChat(announcementId, sellerId)
+    chats.value.unshift(chat)
+    await selectChat(chat.id)
+    return chat
   }
   
   function connectWebSocket() {
+    if (socketConnected.value) return
+    
     chatSocket.connect()
     chatSocket.onMessage((message) => {
       const chatId = message.chatId
+      
       if (!messages.value[chatId]) {
         messages.value[chatId] = []
       }
-      messages.value[chatId].push(message)
+      
+      // Не дублируем
+      const exists = messages.value[chatId].some(m => m.id === message.id)
+      if (!exists) {
+        messages.value[chatId].push(message)
+      }
+      
+      // Обновляем чат
+      const chat = chats.value.find(c => c.id === chatId)
+      if (chat) {
+        chat.lastMessage = message.content
+        chat.lastMessageAt = message.createdAt
+        
+        // Увеличиваем счётчик если чат не открыт
+        if (currentChatId.value !== chatId) {
+          chat.unreadCount = (chat.unreadCount || 0) + 1
+        }
+      }
     })
+    
+    socketConnected.value = true
   }
   
   function disconnectWebSocket() {
     chatSocket.disconnect()
+    socketConnected.value = false
+  }
+  
+  function reset() {
+    chats.value = []
+    currentChatId.value = null
+    messages.value = {}
+    error.value = null
+    searchQuery.value = ''
   }
   
   return {
     chats,
+    currentChatId,
     currentChat,
+    currentMessages,
+    filteredChats,
     messages,
     loading,
+    sending,
     error,
+    searchQuery,
+    socketConnected,
     totalUnread,
     fetchChats,
     fetchMessages,
+    selectChat,
     sendMessage,
-    createChat,
+    createOrOpenChat,
     connectWebSocket,
-    disconnectWebSocket
+    disconnectWebSocket,
+    reset
   }
 })

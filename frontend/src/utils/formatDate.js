@@ -11,12 +11,19 @@ export function formatDate(date, format = 'default') {
     const hours = Math.floor(minutes / 60)
     const days = Math.floor(hours / 24)
     
-    if (seconds < 60) return 'только что'
-    if (minutes < 60) return `${minutes} мин назад`
-    if (hours < 24) return `${hours} ч назад`
-    if (days < 7) return `${days} дн назад`
+    if (seconds < 60) return 'сейчас'
+    if (minutes < 60) return `${minutes} мин`
+    if (hours < 24) return `${hours} ч`
+    if (days < 7) return `${days} дн`
     
-    return d.toLocaleDateString('ru-RU')
+    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+  }
+  
+  if (format === 'time') {
+    return d.toLocaleTimeString('ru-RU', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    })
   }
   
   if (format === 'short') {
