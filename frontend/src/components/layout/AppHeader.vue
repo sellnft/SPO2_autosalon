@@ -15,6 +15,7 @@ const authStore = useAuthStore()
 const isMobileMenuOpen = ref(false)
 const isSearchOpen = ref(false)
 const searchQuery = ref('')
+const isScrolled = ref(false)
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 
@@ -40,6 +41,10 @@ function handleKeydown(e) {
   }
 }
 
+function handleScroll() {
+  isScrolled.value = window.scrollY > 12
+}
+
 watch(() => route.path, () => {
   isMobileMenuOpen.value = false
   isSearchOpen.value = false
@@ -51,74 +56,97 @@ watch(isMobileMenuOpen, (open) => {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  handleScroll()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('scroll', handleScroll)
   document.body.style.overflow = ''
 })
 </script>
 
 <template>
-  <header class="app-header">
-    <div class="app-header__container">
-      <AppLogo class="app-header__logo" />
+  <header class="cv-header" :class="{ 'cv-header--scrolled': isScrolled }">
+    <div class="cv-header__glow" aria-hidden="true"></div>
+    <div class="cv-header__carbon" aria-hidden="true"></div>
 
-      <nav class="app-header__nav" aria-label="Основная навигация">
-        <RouterLink to="/" class="app-header__nav-link">Главная</RouterLink>
-        <RouterLink to="/announcements" class="app-header__nav-link">Каталог</RouterLink>
-        <RouterLink to="/feedback" class="app-header__nav-link">Поддержка</RouterLink>
+    <div class="cv-header__container">
+      <RouterLink to="/" class="cv-header__logo" aria-label="CarVibe — на главную">
+        <AppLogo />
+      </RouterLink>
+
+      <nav class="cv-header__nav" aria-label="Основная навигация">
+        <RouterLink to="/" class="cv-header__nav-link">
+          <span>Главная</span>
+        </RouterLink>
+        <RouterLink to="/announcements" class="cv-header__nav-link">
+          <span>Каталог</span>
+        </RouterLink>
+        <RouterLink to="/feedback" class="cv-header__nav-link">
+          <span>Поддержка</span>
+        </RouterLink>
       </nav>
 
-      <div class="app-header__search">
+      <div class="cv-header__search">
         <button
-          class="app-header__action"
+          class="cv-header__icon-btn"
           aria-label="Поиск"
+          :class="{ 'cv-header__icon-btn--active': isSearchOpen }"
           @click="isSearchOpen = !isSearchOpen"
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="2"/>
-            <path d="M15 15l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M15 15l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
         </button>
 
-        <Transition name="search">
-          <form v-if="isSearchOpen" class="app-header__search-form" @submit.prevent="handleSearch">
+        <Transition name="cv-search">
+          <form v-if="isSearchOpen" class="cv-header__search-form" @submit.prevent="handleSearch">
+            <span class="cv-header__search-icon" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 20 20" fill="none">
+                <circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M15 15l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
             <input
               v-model="searchQuery"
               type="search"
-              placeholder="Поиск автомобиля..."
-              class="app-header__search-input"
+              placeholder="Марка, модель или город..."
+              class="cv-header__search-input"
               autofocus
             />
             <button
               type="button"
-              class="app-header__search-close"
+              class="cv-header__search-close"
               aria-label="Закрыть поиск"
               @click="isSearchOpen = false"
             >
-              ✕
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+              </svg>
             </button>
           </form>
         </Transition>
       </div>
 
-      <div class="app-header__actions">
+      <div class="cv-header__actions">
         <RouterLink
           v-if="isAuthenticated"
           to="/favourites"
-          class="app-header__action"
+          class="cv-header__icon-btn"
           aria-label="Избранное"
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M10 17.5l-1.45-1.32C3.4 11.36 1 9.28 1 6.5 1 4 3 2 5.5 2c1.54 0 3.04.83 3.5 2.36C9.46 2.83 10.96 2 12.5 2 15 2 17 4 17 6.5c0 2.78-2.4 4.86-7.55 9.68L10 17.5z" stroke="currentColor" stroke-width="1.5"/>
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <path d="M10 17.5l-1.45-1.32C3.4 11.36 1 9.28 1 6.5 1 4 3 2 5.5 2c1.54 0 3.04.83 3.5 2.36C9.46 2.83 10.96 2 12.5 2 15 2 17 4 17 6.5c0 2.78-2.4 4.86-7.55 9.68L10 17.5z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
           </svg>
         </RouterLink>
 
         <NotificationBell v-if="isAuthenticated" />
         <UserMenu v-if="isAuthenticated" />
 
-        <div v-else class="app-header__auth">
+        <div v-else class="cv-header__auth">
           <BaseButton size="sm" variant="ghost" @click="router.push('/login')">
             Войти
           </BaseButton>
@@ -128,20 +156,22 @@ onUnmounted(() => {
         </div>
 
         <button
-          class="app-header__menu-toggle"
+          class="cv-header__menu-toggle"
           :aria-expanded="isMobileMenuOpen"
           aria-label="Меню"
           @click="toggleMobileMenu"
         >
-          <svg v-if="!isMobileMenuOpen" width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <svg v-if="!isMobileMenuOpen" width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
-          <svg v-else width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
         </button>
       </div>
     </div>
+
+    <div class="cv-header__accent-line" aria-hidden="true"></div>
 
     <MobileMenu
       v-if="isMobileMenuOpen"
@@ -151,81 +181,182 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.app-header {
+.cv-header {
+  --cv-bg: #0A0A0C;
+  --cv-bg-2: #121215;
+  --cv-border: rgba(201, 169, 97, 0.12);
+  --cv-border-soft: rgba(255, 255, 255, 0.06);
+  --cv-text: rgba(245, 240, 230, 0.9);
+  --cv-text-2: rgba(220, 210, 195, 0.55);
+  --cv-bronze: #C9A961;
+  --cv-bronze-light: #E8D5A0;
+  --cv-bronze-dark: #8B6F3F;
+
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid #E5E7EB;
+  background: linear-gradient(180deg, rgba(18, 18, 21, 0.92) 0%, rgba(10, 10, 12, 0.88) 100%);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-bottom: 1px solid var(--cv-border);
+  color: var(--cv-text);
+  overflow: hidden;
+  isolation: isolate;
+  transition: box-shadow 0.3s ease;
 }
 
-.app-header__container {
+.cv-header--scrolled {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+.cv-header__glow {
+  position: absolute;
+  top: -180px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(201, 169, 97, 0.16), transparent 70%);
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.cv-header__carbon {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.012) 0px,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.012) 0px,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+}
+
+.cv-header__container {
+  position: relative;
+  z-index: 1;
   max-width: 1440px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 28px;
   height: 72px;
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 28px;
 }
 
-.app-header__logo {
+.cv-header__logo {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  transition: transform 0.25s ease, filter 0.25s ease;
+  filter: drop-shadow(0 0 0 rgba(201, 169, 97, 0));
 }
 
-.app-header__nav {
+.cv-header__logo:hover {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 4px 20px rgba(201, 169, 97, 0.35));
+}
+
+.cv-header__nav {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
 }
 
-.app-header__nav-link {
-  padding: 8px 14px;
+.cv-header__nav-link {
+  position: relative;
+  padding: 9px 16px;
   font-size: 14px;
   font-weight: 500;
-  color: #374151;
-  border-radius: 8px;
-  transition: all 0.15s;
+  color: var(--cv-text-2);
+  text-decoration: none;
+  border-radius: 10px;
+  transition: color 0.2s ease, background 0.2s ease;
 }
 
-.app-header__nav-link:hover {
-  background: #F3F4F6;
-  color: #111827;
+.cv-header__nav-link span {
+  position: relative;
+  z-index: 1;
 }
 
-.app-header__nav-link.router-link-active {
-  color: #0A84FF;
-  background: #F0F7FF;
+.cv-header__nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  transform-origin: center;
+  width: calc(100% - 24px);
+  height: 1.5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--cv-bronze-light), transparent);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.app-header__search {
+.cv-header__nav-link:hover {
+  color: var(--cv-bronze-light);
+  background: rgba(201, 169, 97, 0.05);
+}
+
+.cv-header__nav-link.router-link-active {
+  color: var(--cv-bronze-light);
+}
+
+.cv-header__nav-link.router-link-active::after {
+  transform: translateX(-50%) scaleX(1);
+}
+
+.cv-header__search {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-.app-header__action {
-  display: flex;
+.cv-header__icon-btn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 40px;
   height: 40px;
-  color: #6B7280;
-  background: none;
-  border: none;
-  border-radius: 10px;
+  color: var(--cv-text-2);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  border-radius: 11px;
   cursor: pointer;
-  transition: all 0.15s;
+  text-decoration: none;
+  transition: all 0.2s ease;
 }
 
-.app-header__action:hover {
-  background: #F3F4F6;
-  color: #111827;
+.cv-header__icon-btn:hover {
+  color: var(--cv-bronze-light);
+  background: rgba(201, 169, 97, 0.08);
+  border-color: rgba(201, 169, 97, 0.2);
+  transform: translateY(-1px);
 }
 
-.app-header__search-form {
+.cv-header__icon-btn--active {
+  color: var(--cv-bronze-light);
+  background: rgba(201, 169, 97, 0.1);
+  border-color: rgba(201, 169, 97, 0.3);
+}
+
+.cv-header__search-form {
   position: absolute;
   right: 0;
   top: 50%;
@@ -233,102 +364,165 @@ onUnmounted(() => {
   width: 400px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  background: white;
-  border: 1.5px solid #0A84FF;
+  gap: 10px;
+  padding: 0 12px 0 14px;
+  background: linear-gradient(180deg, #1A1A20 0%, #14141A 100%);
+  border: 1px solid rgba(201, 169, 97, 0.3);
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.6),
+    0 0 0 3px rgba(201, 169, 97, 0.08),
+    0 0 32px rgba(201, 169, 97, 0.15);
   z-index: 10;
 }
 
-.app-header__search-input {
+.cv-header__search-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cv-bronze);
+  flex-shrink: 0;
+}
+
+.cv-header__search-input {
   flex: 1;
-  padding: 11px 0;
+  padding: 12px 0;
   font-size: 14px;
+  font-family: inherit;
+  color: var(--cv-text);
   background: transparent;
   border: none;
   outline: none;
+  letter-spacing: 0.1px;
 }
 
-.app-header__search-close {
-  display: flex;
+.cv-header__search-input::placeholder {
+  color: var(--cv-text-2);
+  opacity: 0.7;
+}
+
+.cv-header__search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  display: none;
+}
+
+.cv-header__search-close {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  color: #9CA3AF;
-  background: none;
-  border: none;
-  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  color: var(--cv-text-2);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--cv-border-soft);
+  border-radius: 8px;
   cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.app-header__actions {
+.cv-header__search-close:hover {
+  color: var(--cv-bronze-light);
+  background: rgba(201, 169, 97, 0.12);
+  border-color: rgba(201, 169, 97, 0.3);
+  transform: rotate(90deg);
+}
+
+.cv-header__actions {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
-.app-header__auth {
+.cv-header__auth {
   display: flex;
   gap: 8px;
 }
 
-.app-header__menu-toggle {
+.cv-header__menu-toggle {
   display: none;
   align-items: center;
   justify-content: center;
   width: 40px;
   height: 40px;
-  color: #374151;
-  background: none;
-  border: none;
-  border-radius: 10px;
+  color: var(--cv-text);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--cv-border-soft);
+  border-radius: 11px;
   cursor: pointer;
-}
-
-.search-enter-active,
-.search-leave-active {
   transition: all 0.2s ease;
 }
 
-.search-enter-from,
-.search-leave-to {
+.cv-header__menu-toggle:hover {
+  color: var(--cv-bronze-light);
+  background: rgba(201, 169, 97, 0.08);
+  border-color: rgba(201, 169, 97, 0.25);
+}
+
+.cv-header__accent-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(201, 169, 97, 0.05) 15%,
+    rgba(201, 169, 97, 0.35) 50%,
+    rgba(201, 169, 97, 0.05) 85%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cv-search-enter-active,
+.cv-search-leave-active {
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.cv-search-enter-from,
+.cv-search-leave-to {
   opacity: 0;
-  transform: translateY(-50%) scale(0.95);
+  transform: translateY(-50%) scale(0.94);
 }
 
 @media (max-width: 1024px) {
-  .app-header__container {
+  .cv-header__container {
     padding: 0 20px;
     gap: 16px;
   }
 
-  .app-header__nav {
+  .cv-header__nav {
     display: none;
   }
 
-  .app-header__search-form {
-    width: 320px;
+  .cv-header__search-form {
+    width: 340px;
   }
 }
 
 @media (max-width: 768px) {
-  .app-header__container {
-    height: 60px;
+  .cv-header__container {
+    height: 62px;
     padding: 0 16px;
     gap: 8px;
   }
 
-  .app-header__search {
+  .cv-header__glow {
+    width: 400px;
+    height: 200px;
+  }
+
+  .cv-header__search {
     flex: 1;
     justify-content: flex-end;
   }
 
-  .app-header__search-form {
+  .cv-header__search-form {
     position: fixed;
-    top: 60px;
+    top: 62px;
     left: 0;
     right: 0;
     width: 100%;
@@ -338,23 +532,30 @@ onUnmounted(() => {
     border-right: none;
     border-top: none;
     padding: 0 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
   }
 
-  .app-header__search-input {
+  .cv-header__search-input {
     padding: 14px 0;
   }
 
-  .app-header__auth {
+  .cv-header__auth {
     display: none;
   }
 
-  .app-header__menu-toggle {
-    display: flex;
+  .cv-header__menu-toggle {
+    display: inline-flex;
   }
 
-  .app-header__action {
-    width: 44px;
-    height: 44px;
+  .cv-header__icon-btn {
+    width: 42px;
+    height: 42px;
+  }
+
+  .cv-search-enter-from,
+  .cv-search-leave-to {
+    opacity: 0;
+    transform: translateY(-8px);
   }
 }
 </style>
