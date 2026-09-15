@@ -30,14 +30,14 @@ const priorityInfo = computed(() => {
   return map[props.feedback.priority] || { label: 'Обычный', color: 'info' }
 })
 
-const unreadCount = computed(() => 
-  props.feedback.messages.filter(m => 
+const unreadCount = computed(() =>
+  props.feedback.messages?.filter(m =>
     m.authorType === 'admin' && !m.read
-  ).length
+  ).length || 0
 )
 
 const lastMessage = computed(() => {
-  const msgs = props.feedback.messages
+  const msgs = props.feedback.messages || []
   return msgs[msgs.length - 1]
 })
 </script>
@@ -48,7 +48,7 @@ const lastMessage = computed(() => {
     class="feedback-item"
   >
     <div class="feedback-item__status-bar" :data-color="statusInfo.color"></div>
-    
+
     <div class="feedback-item__main">
       <div class="feedback-item__header">
         <h3 class="feedback-item__subject">{{ feedback.subject }}</h3>
@@ -59,7 +59,7 @@ const lastMessage = computed(() => {
           {{ statusInfo.label }}
         </span>
       </div>
-      
+
       <div class="feedback-item__meta">
         <span class="feedback-item__id">#{{ feedback.id }}</span>
         <span class="feedback-item__dot">•</span>
@@ -74,7 +74,7 @@ const lastMessage = computed(() => {
           {{ formatDate(feedback.updatedAt, 'relative') }}
         </span>
       </div>
-      
+
       <p v-if="lastMessage" class="feedback-item__preview">
         <span class="feedback-item__preview-author">
           {{ lastMessage.authorName }}:
@@ -82,7 +82,7 @@ const lastMessage = computed(() => {
         {{ lastMessage.content }}
       </p>
     </div>
-    
+
     <div v-if="unreadCount" class="feedback-item__badge">
       {{ unreadCount }}
     </div>
@@ -186,6 +186,7 @@ const lastMessage = computed(() => {
   margin-bottom: 10px;
   font-size: 12px;
   color: #6B7280;
+  flex-wrap: wrap;
 }
 
 .feedback-item__id {

@@ -32,7 +32,7 @@ function updateFilter(key, value) {
         @update:model-value="emit('update:search', $event)"
       />
     </div>
-    
+
     <div
       v-for="filter in filters"
       :key="filter.key"
@@ -53,7 +53,7 @@ function updateFilter(key, value) {
         </option>
       </select>
     </div>
-    
+
     <button class="admin-filters__reset" @click="emit('reset')">
       Сбросить
     </button>

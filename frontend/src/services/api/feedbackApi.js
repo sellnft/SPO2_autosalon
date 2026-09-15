@@ -1,33 +1,32 @@
-// TODO: При реальном backend - заменить mock на реальные запросы
 import config from '@/config'
+import axiosInstance from './axios'
 import { mockFeedback } from '@/mock/feedback'
 
 export const feedbackApi = {
   async getFeedback() {
     if (config.api.useMock) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      return mockFeedback
+      await new Promise(r => setTimeout(r, 200))
+      return [...mockFeedback]
     }
-    // const { data } = await axiosInstance.get('/feedback')
-    // return data
+    const { data } = await axiosInstance.get('/feedback')
+    return data
   },
-  
+
   async getFeedbackById(id) {
     if (config.api.useMock) {
-      await new Promise(resolve => setTimeout(resolve, 300))
+      await new Promise(r => setTimeout(r, 200))
       return mockFeedback.find(f => f.id === Number(id)) || null
     }
-    // const { data } = await axiosInstance.get(`/feedback/${id}`)
-    // return data
+    const { data } = await axiosInstance.get(`/feedback/${id}`)
+    return data
   },
-  
+
   async createFeedback(data) {
     if (config.api.useMock) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
+      await new Promise(r => setTimeout(r, 400))
       const feedback = {
         id: mockFeedback.length + 1,
-        userId: 4,
+        userId: 1,
         userName: 'Вы',
         subject: data.subject,
         category: data.category,
@@ -39,7 +38,7 @@ export const feedbackApi = {
           {
             id: Date.now(),
             feedbackId: mockFeedback.length + 1,
-            authorId: 4,
+            authorId: 1,
             authorName: 'Вы',
             authorType: 'user',
             content: data.message,
@@ -48,37 +47,34 @@ export const feedbackApi = {
           }
         ]
       }
-      
       mockFeedback.push(feedback)
       return feedback
     }
-    // const { data } = await axiosInstance.post('/feedback', data)
-    // return data
+    const { data: result } = await axiosInstance.post('/feedback', data)
+    return result
   },
-  
+
   async sendMessage(feedbackId, content) {
     if (config.api.useMock) {
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
+      await new Promise(r => setTimeout(r, 200))
       const feedback = mockFeedback.find(f => f.id === Number(feedbackId))
       if (!feedback) throw new Error('Обращение не найдено')
-      
+
       const message = {
         id: Date.now(),
         feedbackId: Number(feedbackId),
-        authorId: 4,
+        authorId: 1,
         authorName: 'Вы',
         authorType: 'user',
         content,
         createdAt: new Date().toISOString(),
         read: false
       }
-      
       feedback.messages.push(message)
       feedback.updatedAt = new Date().toISOString()
-      feedback.status = 'open' // возвращаем в работу
-      
-      // Имитация ответа поддержки через 3 секунды
+      feedback.status = 'open'
+
+      // Mock auto-reply
       setTimeout(() => {
         const reply = {
           id: Date.now() + 1,
@@ -94,10 +90,10 @@ export const feedbackApi = {
         feedback.updatedAt = new Date().toISOString()
         feedback.status = 'in_progress'
       }, 3000)
-      
+
       return message
     }
-    // const { data } = await axiosInstance.post(`/feedback/${feedbackId}/messages`, { content })
-    // return data
+    const { data: result } = await axiosInstance.post(`/feedback/${feedbackId}/messages`, { content })
+    return result
   }
 }

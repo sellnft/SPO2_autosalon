@@ -3,8 +3,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAnnouncementsStore } from '@/stores/announcements'
 import AnnouncementCard from '@/components/announcements/AnnouncementCard.vue'
+import AnnouncementSkeleton from '@/components/announcements/AnnouncementSkeleton.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
-import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
 
 const router = useRouter()
@@ -56,7 +56,7 @@ const advantages = [
   }
 ]
 
-async function handleSearch() {
+function handleSearch() {
   const query = {}
   if (searchQuery.value.trim()) query.search = searchQuery.value.trim()
   if (selectedBrand.value) query.brand = selectedBrand.value
@@ -72,6 +72,8 @@ async function loadPopularAnnouncements() {
       sortOrder: 'desc'
     })
     popularAnnouncements.value = response.items
+  } catch (err) {
+    console.error('Failed to load popular announcements:', err)
   } finally {
     loading.value = false
   }
@@ -84,29 +86,27 @@ onMounted(() => {
 
 <template>
   <div class="home-page">
-    <!-- Hero Section -->
     <section class="hero">
       <div class="hero__background">
         <div class="hero__gradient"></div>
-        <img 
-          src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80" 
+        <img
+          src="https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=1920&q=80"
           alt="Автомобиль"
           class="hero__image"
         />
       </div>
-      
+
       <div class="hero__content">
         <div class="container">
           <h1 class="hero__title">
             Ваш следующий автомобиль
             <span class="hero__title-accent">уже здесь</span>
           </h1>
-          
+
           <p class="hero__subtitle">
             Технологичная платформа для тех, кто ценит время и качество
           </p>
-          
-          <!-- Search -->
+
           <form class="hero__search" @submit.prevent="handleSearch">
             <div class="hero__search-input">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -119,20 +119,19 @@ onMounted(() => {
                 placeholder="Поиск по марке, модели или ключевому слову..."
               />
             </div>
-            
+
             <BaseSelect
               v-model="selectedBrand"
               :options="brands"
               placeholder="Все марки"
               class="hero__search-select"
             />
-            
+
             <BaseButton type="submit" size="lg">
               Найти
             </BaseButton>
           </form>
-          
-          <!-- Stats -->
+
           <div class="hero__stats">
             <div class="hero__stat">
               <span class="hero__stat-value">25 000+</span>
@@ -150,12 +149,11 @@ onMounted(() => {
         </div>
       </div>
     </section>
-    
-    <!-- Categories -->
+
     <section class="categories">
       <div class="container">
         <h2 class="categories__title">Категории</h2>
-        
+
         <div class="categories__grid">
           <button
             v-for="bodyType in bodyTypes"
@@ -169,8 +167,7 @@ onMounted(() => {
         </div>
       </div>
     </section>
-    
-    <!-- Popular Announcements -->
+
     <section class="popular">
       <div class="container">
         <div class="popular__header">
@@ -182,11 +179,11 @@ onMounted(() => {
             </svg>
           </BaseButton>
         </div>
-        
+
         <div v-if="loading" class="popular__grid">
           <AnnouncementSkeleton v-for="i in 4" :key="i" />
         </div>
-        
+
         <div v-else class="popular__grid">
           <AnnouncementCard
             v-for="announcement in popularAnnouncements"
@@ -196,12 +193,11 @@ onMounted(() => {
         </div>
       </div>
     </section>
-    
-    <!-- Advantages -->
+
     <section class="advantages">
       <div class="container">
         <h2 class="advantages__title">Почему мы</h2>
-        
+
         <div class="advantages__grid">
           <div v-for="advantage in advantages" :key="advantage.title" class="advantage-card">
             <span class="advantage-card__icon">{{ advantage.icon }}</span>
@@ -211,8 +207,7 @@ onMounted(() => {
         </div>
       </div>
     </section>
-    
-    <!-- Info Block -->
+
     <section class="info-block">
       <div class="container">
         <div class="info-block__content">
@@ -221,8 +216,8 @@ onMounted(() => {
               Современный подход к покупке автомобиля
             </h2>
             <p class="info-block__description">
-              Мы создали платформу, которая объединяет лучшие технологии и удобство. 
-              Проверенные продавцы, безопасные сделки и прозрачная статистика — 
+              Мы создали платформу, которая объединяет лучшие технологии и удобство.
+              Проверенные продавцы, безопасные сделки и прозрачная статистика —
               всё для вашей уверенности.
             </p>
             <div class="info-block__actions">
@@ -234,11 +229,12 @@ onMounted(() => {
               </BaseButton>
             </div>
           </div>
-          
+
           <div class="info-block__image">
-            <img 
-              src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&q=80" 
+            <img
+              src="https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800&q=80"
               alt="Автомобиль"
+              loading="lazy"
             />
           </div>
         </div>
@@ -252,7 +248,6 @@ onMounted(() => {
   min-height: 100vh;
 }
 
-/* Hero */
 .hero {
   position: relative;
   min-height: 600px;
@@ -305,6 +300,7 @@ onMounted(() => {
   background: linear-gradient(135deg, #0A84FF, #00D4FF);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .hero__subtitle {
@@ -338,6 +334,7 @@ onMounted(() => {
   font-size: 14px;
   border: none;
   outline: none;
+  background: transparent;
 }
 
 .hero__search-select {
@@ -366,7 +363,6 @@ onMounted(() => {
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Categories */
 .categories {
   padding: 60px 0;
 }
@@ -396,6 +392,7 @@ onMounted(() => {
   border: 1px solid #E5E7EB;
   border-radius: 16px;
   transition: all 0.2s;
+  cursor: pointer;
 }
 
 .category-card:hover {
@@ -414,7 +411,6 @@ onMounted(() => {
   color: #111827;
 }
 
-/* Popular */
 .popular {
   padding: 60px 0;
   background: #F9FAFB;
@@ -433,7 +429,6 @@ onMounted(() => {
   gap: 20px;
 }
 
-/* Advantages */
 .advantages {
   padding: 60px 0;
 }
@@ -475,7 +470,6 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-/* Info Block */
 .info-block {
   padding: 80px 0;
   background: #111827;
@@ -513,24 +507,23 @@ onMounted(() => {
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
-/* Responsive */
 @media (max-width: 1024px) {
   .hero__title {
     font-size: 40px;
   }
-  
+
   .popular__grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .categories__grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .advantages__grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .info-block__content {
     grid-template-columns: 1fr;
     gap: 32px;
@@ -541,35 +534,36 @@ onMounted(() => {
   .hero {
     min-height: 500px;
   }
-  
+
   .hero__title {
     font-size: 32px;
   }
-  
+
   .hero__search {
     flex-direction: column;
   }
-  
+
   .hero__search-select {
     width: 100%;
   }
-  
+
   .hero__stats {
     gap: 20px;
+    flex-wrap: wrap;
   }
-  
+
   .hero__stat-value {
     font-size: 20px;
   }
-  
+
   .popular__grid {
     grid-template-columns: 1fr;
   }
-  
+
   .categories__grid {
     grid-template-columns: 1fr;
   }
-  
+
   .advantages__grid {
     grid-template-columns: 1fr;
   }

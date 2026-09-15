@@ -19,8 +19,8 @@ const toastStore = useToastStore()
 
 const loading = ref(false)
 
-const isSubscribed = computed(() => 
-  subscriptionsStore.subscriptions.some(s => s.announcementId === Number(props.announcementId))
+const isSubscribed = computed(() =>
+  subscriptionsStore.isSubscribed(props.announcementId)
 )
 
 async function handleToggle() {
@@ -29,7 +29,7 @@ async function handleToggle() {
     router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
     return
   }
-  
+
   loading.value = true
   try {
     if (isSubscribed.value) {

@@ -13,36 +13,32 @@ const route = useRoute()
 
 const breadcrumbs = computed(() => {
   if (props.items.length) return props.items
-  
+
   const items = [{ label: 'Главная', to: '/' }]
-  
+
   const pathSegments = route.path.split('/').filter(Boolean)
-  
   let currentPath = ''
-  
+
   route.matched.forEach((matchedRoute, index) => {
     const segment = pathSegments[index]
     if (!segment) return
-    
+
     currentPath += `/${segment}`
-    
-    // Пропускаем динамические id
-    if (/^\d+$/.test(segment)) {
-      return
-    }
-    
+
+    if (/^\d+$/.test(segment)) return
+
     const isLast = index === route.matched.length - 1
     const label = matchedRoute.meta?.title || segment
       .split('-')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
-    
+
     items.push({
       label,
       to: isLast ? null : currentPath
     })
   })
-  
+
   return items
 })
 </script>

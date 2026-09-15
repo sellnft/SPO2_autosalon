@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useNotificationsStore } from '@/stores/notifications'
 import NotificationItem from './NotificationItem.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -13,6 +13,12 @@ const hasUnread = computed(() => notificationsStore.hasUnread)
 async function markAllAsRead() {
   await notificationsStore.markAllAsRead()
 }
+
+onMounted(() => {
+  if (!notificationsStore.notifications.length) {
+    notificationsStore.fetchNotifications()
+  }
+})
 </script>
 
 <template>
@@ -22,14 +28,14 @@ async function markAllAsRead() {
         Отметить все как прочитанные
       </BaseButton>
     </div>
-    
+
     <EmptyState
       v-if="!notifications.length"
       icon="chat"
       title="Нет уведомлений"
       description="Здесь будут появляться ваши уведомления"
     />
-    
+
     <div v-else class="notification-list__items">
       <NotificationItem
         v-for="notification in notifications"

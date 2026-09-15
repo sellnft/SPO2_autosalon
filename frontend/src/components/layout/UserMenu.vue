@@ -1,5 +1,4 @@
 <script setup>
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import BaseDropdown from '@/components/common/BaseDropdown.vue'
@@ -8,12 +7,12 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const menuItems = [
-  { label: 'Мой профиль', to: '/profile', icon: 'user' },
-  { label: 'Мои объявления', to: '/profile/announcements', icon: 'car' },
-  { label: 'Избранное', to: '/favourites', icon: 'heart' },
-  { label: 'Настройки', to: '/profile/edit', icon: 'settings' },
+  { label: 'Мой профиль', to: '/profile' },
+  { label: 'Мои объявления', to: '/profile/announcements' },
+  { label: 'Избранное', to: '/favourites' },
+  { label: 'Настройки', to: '/profile/edit' },
   { type: 'divider' },
-  { label: 'Выйти', action: 'logout', icon: 'logout', danger: true }
+  { label: 'Выйти', action: 'logout', danger: true }
 ]
 
 function handleSelect(item) {
@@ -49,7 +48,10 @@ function handleSelect(item) {
   gap: 8px;
   padding: 4px 8px;
   border-radius: 10px;
-  transition: all 0.2s;
+  transition: all 0.15s;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 
 .user-menu__trigger:hover {
@@ -76,8 +78,6 @@ function handleSelect(item) {
 }
 
 @media (max-width: 768px) {
-  .user-menu__name {
-    display: none;
-  }
+  .user-menu__name { display: none; }
 }
 </style>

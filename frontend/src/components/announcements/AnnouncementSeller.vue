@@ -23,13 +23,13 @@ const loading = ref(false)
 async function contactSeller() {
   if (!authStore.isAuthenticated) {
     toastStore.info('Войдите, чтобы написать продавцу')
-    router.push({ 
-      name: 'login', 
-      query: { redirect: router.currentRoute.value.fullPath } 
+    router.push({
+      name: 'login',
+      query: { redirect: router.currentRoute.value.fullPath }
     })
     return
   }
-  
+
   loading.value = true
   try {
     const chat = await chatStore.createOrOpenChat(
@@ -48,19 +48,19 @@ async function contactSeller() {
 <template>
   <div class="announcement-seller">
     <h3 class="announcement-seller__title">Продавец</h3>
-    
+
     <div class="announcement-seller__info">
       <div class="announcement-seller__avatar">
-        {{ announcement.sellerName?.charAt(0) }}
+        {{ announcement.sellerName?.charAt(0) || 'П' }}
       </div>
-      
+
       <div class="announcement-seller__details">
         <p class="announcement-seller__name">{{ announcement.sellerName }}</p>
         <p class="announcement-seller__type">{{ announcement.sellerType }}</p>
         <p class="announcement-seller__location">{{ announcement.city }}</p>
       </div>
     </div>
-    
+
     <div class="announcement-seller__actions">
       <BaseButton block :loading="loading" @click="contactSeller">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
@@ -76,6 +76,7 @@ async function contactSeller() {
 .announcement-seller {
   padding: 24px;
   background: white;
+  border: 1px solid #E5E7EB;
   border-radius: 16px;
 }
 
@@ -98,6 +99,7 @@ async function contactSeller() {
   justify-content: center;
   width: 48px;
   height: 48px;
+  flex-shrink: 0;
   font-size: 20px;
   font-weight: 600;
   color: white;

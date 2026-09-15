@@ -5,22 +5,22 @@ const currentYear = new Date().getFullYear()
 
 const navigationLinks = [
   { label: 'Каталог', to: '/announcements' },
-  { label: 'О нас', to: '/about' },
+  { label: 'Избранное', to: '/favourites' },
   { label: 'Поддержка', to: '/feedback' },
-  { label: 'Правила', to: '/terms' }
+  { label: 'Чаты', to: '/chat' }
 ]
 
-const serviceLinks = [
-  { label: 'Помощь', to: '/help' },
-  { label: 'Безопасность', to: '/safety' },
-  { label: 'Реклама', to: '/advertising' },
-  { label: 'Контакты', to: '/contacts' }
+const accountLinks = [
+  { label: 'Профиль', to: '/profile' },
+  { label: 'Мои объявления', to: '/profile/announcements' },
+  { label: 'Настройки', to: '/profile/edit' },
+  { label: 'Безопасность', to: '/profile/security' }
 ]
 </script>
 
 <template>
   <footer class="app-footer">
-    <div class="app-footer__container">
+    <div class="container">
       <div class="app-footer__top">
         <div class="app-footer__brand">
           <AppLogo />
@@ -28,7 +28,7 @@ const serviceLinks = [
             Современная платформа для покупки и продажи автомобилей
           </p>
         </div>
-        
+
         <div class="app-footer__columns">
           <div class="app-footer__column">
             <h4 class="app-footer__title">Навигация</h4>
@@ -40,18 +40,18 @@ const serviceLinks = [
               </li>
             </ul>
           </div>
-          
+
           <div class="app-footer__column">
-            <h4 class="app-footer__title">Сервис</h4>
+            <h4 class="app-footer__title">Аккаунт</h4>
             <ul class="app-footer__list">
-              <li v-for="link in serviceLinks" :key="link.label">
+              <li v-for="link in accountLinks" :key="link.label">
                 <RouterLink :to="link.to" class="app-footer__link">
                   {{ link.label }}
                 </RouterLink>
               </li>
             </ul>
           </div>
-          
+
           <div class="app-footer__column">
             <h4 class="app-footer__title">Контакты</h4>
             <ul class="app-footer__list">
@@ -69,19 +69,11 @@ const serviceLinks = [
           </div>
         </div>
       </div>
-      
+
       <div class="app-footer__bottom">
         <p class="app-footer__copyright">
           © {{ currentYear }} Auto Platform. Все права защищены.
         </p>
-        <div class="app-footer__legal">
-          <RouterLink to="/privacy" class="app-footer__legal-link">
-            Политика конфиденциальности
-          </RouterLink>
-          <RouterLink to="/terms" class="app-footer__legal-link">
-            Условия использования
-          </RouterLink>
-        </div>
       </div>
     </div>
   </footer>
@@ -89,21 +81,16 @@ const serviceLinks = [
 
 <style scoped>
 .app-footer {
+  margin-top: 80px;
   background: #111827;
   color: #9CA3AF;
-}
-
-.app-footer__container {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 48px 20px 24px;
 }
 
 .app-footer__top {
   display: grid;
   grid-template-columns: 1fr 2fr;
   gap: 48px;
-  margin-bottom: 48px;
+  padding: 48px 0 32px;
 }
 
 .app-footer__description {
@@ -111,6 +98,7 @@ const serviceLinks = [
   font-size: 14px;
   line-height: 1.6;
   color: #6B7280;
+  max-width: 320px;
 }
 
 .app-footer__columns {
@@ -143,30 +131,12 @@ const serviceLinks = [
 }
 
 .app-footer__bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: 24px;
+  padding: 24px 0;
   border-top: 1px solid #374151;
 }
 
 .app-footer__copyright {
   font-size: 13px;
-}
-
-.app-footer__legal {
-  display: flex;
-  gap: 24px;
-}
-
-.app-footer__legal-link {
-  font-size: 13px;
-  color: #9CA3AF;
-  transition: color 0.2s;
-}
-
-.app-footer__legal-link:hover {
-  color: white;
 }
 
 @media (max-width: 1024px) {
@@ -180,17 +150,6 @@ const serviceLinks = [
   .app-footer__columns {
     grid-template-columns: 1fr;
     gap: 24px;
-  }
-  
-  .app-footer__bottom {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
-  }
-  
-  .app-footer__legal {
-    flex-direction: column;
-    gap: 8px;
   }
 }
 </style>

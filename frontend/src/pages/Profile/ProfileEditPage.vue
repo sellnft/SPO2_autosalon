@@ -1,16 +1,19 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useUserStore } from '@/stores/user'
+import { useToastStore } from '@/stores/toast'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
+import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 
+const router = useRouter()
 const authStore = useAuthStore()
 const userStore = useUserStore()
+const toastStore = useToastStore()
 
-const loading = ref(false)
 const saving = ref(false)
-const successMessage = ref('')
 
 const form = reactive({
   name: '',
@@ -29,40 +32,38 @@ function validate() {
   errors.name = ''
   errors.email = ''
   errors.phone = ''
-  
-  if (!form.name) {
-    errors.name = 'Имя обязательно'
-  }
-  
-  if (!form.email) {
-    errors.email = 'Email обязателен'
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = 'Некорректный email'
-  }
-  
+
+  if (!form.name) errors.name = 'Имя обязательно'
+  else if (form.name.length < 2) errors.name = 'Минимум 2 символа'
+
+  if (!form.email) errors.email = 'Email обязателен'
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = 'Некорректный email'
+
   if (form.phone && !/^\+?[\d\s-]{10,}$/.test(form.phone)) {
     errors.phone = 'Некорректный телефон'
   }
-  
-  return !errors.name && !errors.email && !errors.phone
+
+  return !Object.values(errors).some(Boolean)
 }
 
 async function handleSubmit() {
   if (!validate()) return
-  
+
   saving.value = true
-  successMessage.value = ''
-  
+
   try {
     await userStore.updateProfile({
       id: authStore.user.id,
       ...form
     })
-    successMessage.value = 'Профиль обновлён'
-    
-    setTimeout(() => {
-      successMessage.value = ''
-    }, 3000)
+
+    // Обновляем auth store
+    authStore.user = { ...authStore.user, ...form }
+
+    toastStore.success('Профиль обновлён')
+    router.push('/profile')
+  } catch (err) {
+    toastStore.error(err.message || 'Не удалось сохранить')
   } finally {
     saving.value = false
   }
@@ -70,8 +71,8 @@ async function handleSubmit() {
 
 onMounted(() => {
   if (authStore.user) {
-    form.name = authStore.user.name
-    form.email = authStore.user.email
+    form.name = authStore.user.name || ''
+    form.email = authStore.user.email || ''
     form.phone = authStore.user.phone || ''
     form.city = authStore.user.city || ''
   }
@@ -81,13 +82,11 @@ onMounted(() => {
 <template>
   <div class="profile-edit-page">
     <div class="container">
+      <Breadcrumbs />
+
       <h1 class="profile-edit-page__title">Редактирование профиля</h1>
-      
+
       <form class="profile-edit-page__form" @submit.prevent="handleSubmit">
-        <div v-if="successMessage" class="profile-edit-page__success">
-          {{ successMessage }}
-        </div>
-        
         <BaseInput
           v-model="form.name"
           label="Имя"
@@ -95,7 +94,7 @@ onMounted(() => {
           :error="errors.name"
           required
         />
-        
+
         <BaseInput
           v-model="form.email"
           label="Email"
@@ -104,7 +103,7 @@ onMounted(() => {
           :error="errors.email"
           required
         />
-        
+
         <BaseInput
           v-model="form.phone"
           label="Телефон"
@@ -112,22 +111,18 @@ onMounted(() => {
           placeholder="+7 (900) 123-45-67"
           :error="errors.phone"
         />
-        
+
         <BaseInput
           v-model="form.city"
           label="Город"
           placeholder="Москва"
         />
-        
+
         <div class="profile-edit-page__actions">
-          <BaseButton
-            type="button"
-            variant="ghost"
-            @click="$router.back()"
-          >
+          <BaseButton type="button" variant="ghost" @click="router.back()">
             Отмена
           </BaseButton>
-          
+
           <BaseButton type="submit" :loading="saving">
             Сохранить
           </BaseButton>
@@ -139,13 +134,14 @@ onMounted(() => {
 
 <style scoped>
 .profile-edit-page {
-  padding: 40px 0;
+  padding: 20px 0 40px;
 }
 
 .profile-edit-page__title {
   margin-bottom: 32px;
   font-size: 32px;
   font-weight: 700;
+  color: #111827;
 }
 
 .profile-edit-page__form {
@@ -155,20 +151,21 @@ onMounted(() => {
   gap: 20px;
   padding: 32px;
   background: white;
+  border: 1px solid #E5E7EB;
   border-radius: 16px;
-}
-
-.profile-edit-page__success {
-  padding: 12px;
-  font-size: 14px;
-  color: #065f46;
-  background: #D1FAE5;
-  border-radius: 8px;
 }
 
 .profile-edit-page__actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #F3F4F6;
+}
+
+@media (max-width: 640px) {
+  .profile-edit-page__title {
+    font-size: 24px;
+  }
 }
 </style>

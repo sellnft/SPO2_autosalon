@@ -50,13 +50,10 @@ const steps = [
 const totalSteps = steps.length
 
 const form = reactive({
-  // Step 1
   brand: '',
   model: '',
   year: '',
   vin: '',
-  
-  // Step 2
   mileage: '',
   engineType: '',
   engineVolume: '',
@@ -68,23 +65,13 @@ const form = reactive({
   steeringWheel: 'Левый',
   owners: '',
   country: '',
-  
-  // Step 3
   condition: 'Хорошее',
   hasAccidents: false,
   serviceHistory: false,
-  
-  // Step 4
   price: '',
   negotiable: false,
-  
-  // Step 5
   city: '',
-  
-  // Step 6
   photos: [],
-  
-  // Step 7
   description: ''
 })
 
@@ -95,16 +82,20 @@ const progress = computed(() => (currentStep.value / totalSteps) * 100)
 const isFirstStep = computed(() => currentStep.value === 1)
 const isLastStep = computed(() => currentStep.value === totalSteps)
 
-// Autosave on form change
+// Autosave (только в create режиме)
 watch(form, (newVal) => {
   if (props.mode === 'create') {
     draftManager.autoSave({ ...newVal, _step: currentStep.value })
   }
 }, { deep: true })
 
+function onFormUpdate(newForm) {
+  Object.assign(form, newForm)
+}
+
 function validateStep(step) {
   errors.value = {}
-  
+
   if (step === 1) {
     if (!form.brand) errors.value.brand = 'Выберите марку'
     if (!form.model) errors.value.model = 'Введите модель'
@@ -113,7 +104,7 @@ function validateStep(step) {
       errors.value.year = 'Некорректный год'
     }
   }
-  
+
   if (step === 2) {
     if (!form.mileage) errors.value.mileage = 'Введите пробег'
     if (!form.engineType) errors.value.engineType = 'Выберите тип двигателя'
@@ -122,27 +113,27 @@ function validateStep(step) {
     if (!form.bodyType) errors.value.bodyType = 'Выберите кузов'
     if (!form.color) errors.value.color = 'Выберите цвет'
   }
-  
+
   if (step === 4) {
     if (!form.price) errors.value.price = 'Введите цену'
-    else if (form.price <= 0) errors.value.price = 'Некорректная цена'
+    else if (Number(form.price) <= 0) errors.value.price = 'Некорректная цена'
   }
-  
+
   if (step === 5) {
     if (!form.city) errors.value.city = 'Введите город'
   }
-  
+
   if (step === 6) {
     if (!form.photos.length) errors.value.photos = 'Добавьте хотя бы одно фото'
   }
-  
+
   if (step === 7) {
     if (!form.description) errors.value.description = 'Добавьте описание'
     else if (form.description.length < 30) {
       errors.value.description = 'Минимум 30 символов'
     }
   }
-  
+
   return Object.keys(errors.value).length === 0
 }
 
@@ -151,7 +142,7 @@ function nextStep() {
     toastStore.error('Заполните обязательные поля')
     return
   }
-  
+
   if (!isLastStep.value) {
     currentStep.value++
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -177,7 +168,7 @@ async function handlePublish() {
     toastStore.error('Заполните обязательные поля')
     return
   }
-  
+
   saving.value = true
   try {
     const payload = {
@@ -193,7 +184,7 @@ async function handlePublish() {
       sellerName: 'Вы',
       sellerType: 'Частное лицо'
     }
-    
+
     let result
     if (props.mode === 'edit' && props.announcementId) {
       result = await announcementsStore.updateAnnouncement(props.announcementId, payload)
@@ -203,7 +194,7 @@ async function handlePublish() {
       draftManager.clearDraft()
       toastStore.success('Объявление создано и отправлено на модерацию')
     }
-    
+
     router.push(`/announcements/${result.id}`)
   } catch (err) {
     toastStore.error(err.message || 'Ошибка сохранения')
@@ -214,15 +205,31 @@ async function handlePublish() {
 
 async function loadForEdit() {
   if (!props.announcementId) return
-  
+
   loading.value = true
   try {
     const announcement = await announcementsStore.fetchAnnouncement(props.announcementId)
+
     Object.keys(form).forEach(key => {
-      if (announcement[key] !== undefined) {
+      if (announcement[key] !== undefined && key !== 'photos') {
         form[key] = announcement[key]
       }
     })
+
+    // Нормализация photos — превращаем URL-строки в объекты
+    if (Array.isArray(announcement.photos)) {
+      form.photos = announcement.photos.map((photo, index) => {
+        if (typeof photo === 'string') {
+          return {
+            id: `photo-${index}-${Date.now()}`,
+            url: photo,
+            name: `photo-${index + 1}.jpg`,
+            main: index === 0
+          }
+        }
+        return photo
+      })
+    }
   } catch (err) {
     toastStore.error('Не удалось загрузить объявление')
     router.push('/profile/announcements')
@@ -248,16 +255,15 @@ onMounted(() => {
 
 <template>
   <div class="wizard">
-    <!-- Progress -->
     <div class="wizard__progress">
       <div class="wizard__progress-bar" :style="{ width: `${progress}%` }"></div>
     </div>
 
-    <!-- Steps -->
     <div class="wizard__steps">
       <button
         v-for="step in steps"
         :key="step.id"
+        type="button"
         :class="[
           'wizard__step',
           {
@@ -279,7 +285,6 @@ onMounted(() => {
       </button>
     </div>
 
-    <!-- Content -->
     <div v-if="loading" class="wizard__loading">
       Загрузка...
     </div>
@@ -289,11 +294,11 @@ onMounted(() => {
 
       <component
         :is="currentStepComponent"
-        v-model="form"
+        :model-value="form"
         :errors="errors"
+        @update:model-value="onFormUpdate"
       />
 
-      <!-- Actions -->
       <div class="wizard__actions">
         <BaseButton
           v-if="!isFirstStep"
@@ -352,6 +357,7 @@ onMounted(() => {
   margin-bottom: 32px;
   overflow-x: auto;
   padding-bottom: 4px;
+  scrollbar-width: thin;
 }
 
 .wizard__step {

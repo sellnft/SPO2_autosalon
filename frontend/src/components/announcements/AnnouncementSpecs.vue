@@ -14,11 +14,13 @@ const specs = computed(() => [
   { label: 'Пробег', value: formatMileage(props.announcement.mileage) },
   { label: 'Кузов', value: props.announcement.bodyType },
   { label: 'Двигатель', value: props.announcement.engineType },
-  { label: 'Объём двигателя', value: `${props.announcement.engineVolume} л` },
-  { label: 'Мощность', value: `${props.announcement.power} л.с.` },
+  { label: 'Объём двигателя', value: props.announcement.engineVolume ? `${props.announcement.engineVolume} л` : '—' },
+  { label: 'Мощность', value: props.announcement.power ? `${props.announcement.power} л.с.` : '—' },
   { label: 'КПП', value: props.announcement.transmission },
   { label: 'Привод', value: props.announcement.drive },
   { label: 'Цвет', value: props.announcement.color },
+  { label: 'Руль', value: props.announcement.steeringWheel || 'Левый' },
+  { label: 'Владельцев', value: props.announcement.owners || '—' },
   { label: 'Город', value: props.announcement.city }
 ])
 </script>
@@ -26,10 +28,10 @@ const specs = computed(() => [
 <template>
   <div class="announcement-specs">
     <h3 class="announcement-specs__title">Характеристики</h3>
-    
+
     <dl class="announcement-specs__list">
-      <div 
-        v-for="spec in specs" 
+      <div
+        v-for="spec in specs"
         :key="spec.label"
         class="announcement-specs__item"
       >
@@ -44,6 +46,7 @@ const specs = computed(() => [
 .announcement-specs {
   padding: 24px;
   background: white;
+  border: 1px solid #E5E7EB;
   border-radius: 16px;
 }
 
@@ -56,19 +59,16 @@ const specs = computed(() => [
 
 .announcement-specs__list {
   display: grid;
-  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 24px;
 }
 
 .announcement-specs__item {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid #F3F4F6;
-}
-
-.announcement-specs__item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
 }
 
 .announcement-specs__label {
@@ -80,5 +80,12 @@ const specs = computed(() => [
   font-size: 14px;
   font-weight: 500;
   color: #111827;
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .announcement-specs__list {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

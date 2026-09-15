@@ -12,7 +12,6 @@ const activeIndex = ref(0)
 
 const currentPhoto = computed(() => props.photos[activeIndex.value] || '')
 
-// Сброс индекса при смене photos
 watch(() => props.photos, () => {
   activeIndex.value = 0
 }, { deep: true })
@@ -46,7 +45,7 @@ function setPhoto(index) {
       <div v-else class="announcement-gallery__placeholder">
         Нет фото
       </div>
-      
+
       <button
         v-if="photos.length > 1"
         class="announcement-gallery__nav announcement-gallery__nav--prev"
@@ -58,7 +57,7 @@ function setPhoto(index) {
           <path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
-      
+
       <button
         v-if="photos.length > 1"
         class="announcement-gallery__nav announcement-gallery__nav--next"
@@ -70,12 +69,12 @@ function setPhoto(index) {
           <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
-      
+
       <span v-if="photos.length > 1" class="announcement-gallery__counter">
         {{ activeIndex + 1 }} / {{ photos.length }}
       </span>
     </div>
-    
+
     <div v-if="photos.length > 1" class="announcement-gallery__thumbnails">
       <button
         v-for="(photo, index) in photos"
@@ -91,7 +90,7 @@ function setPhoto(index) {
       </button>
     </div>
   </div>
-  
+
   <div v-else class="announcement-gallery__empty">
     Нет фотографий
   </div>
@@ -153,13 +152,8 @@ function setPhoto(index) {
   cursor: not-allowed;
 }
 
-.announcement-gallery__nav--prev {
-  left: 16px;
-}
-
-.announcement-gallery__nav--next {
-  right: 16px;
-}
+.announcement-gallery__nav--prev { left: 16px; }
+.announcement-gallery__nav--next { right: 16px; }
 
 .announcement-gallery__counter {
   position: absolute;

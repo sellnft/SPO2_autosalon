@@ -19,9 +19,9 @@ const stats = computed(() => adminStore.dashboardStats)
       <h1 class="admin-dashboard__title">Обзор</h1>
       <p class="admin-dashboard__subtitle">Ключевые показатели платформы</p>
     </header>
-    
+
     <BaseLoader v-if="!stats" text="Загрузка статистики..." />
-    
+
     <template v-else>
       <div class="admin-dashboard__grid">
         <AdminStatCard
@@ -55,7 +55,7 @@ const stats = computed(() => adminStore.dashboardStats)
           accent="danger"
         />
       </div>
-      
+
       <div class="admin-dashboard__section">
         <h2 class="admin-dashboard__section-title">Быстрые действия</h2>
         <div class="admin-dashboard__actions">
@@ -68,7 +68,7 @@ const stats = computed(() => adminStore.dashboardStats)
               </p>
             </div>
           </RouterLink>
-          
+
           <RouterLink to="/admin/feedback?status=open" class="admin-dashboard__action">
             <span class="admin-dashboard__action-icon">💬</span>
             <div>
@@ -78,7 +78,7 @@ const stats = computed(() => adminStore.dashboardStats)
               </p>
             </div>
           </RouterLink>
-          
+
           <RouterLink to="/admin/users" class="admin-dashboard__action">
             <span class="admin-dashboard__action-icon">👥</span>
             <div>

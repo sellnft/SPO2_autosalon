@@ -1,5 +1,5 @@
 <script setup>
-const props = defineProps({
+defineProps({
   size: {
     type: String,
     default: 'md',
@@ -23,15 +23,15 @@ const props = defineProps({
     <div v-if="variant === 'spinner'" :class="['base-loader__spinner', `base-loader__spinner--${size}`]">
       <div class="spinner" :style="{ borderColor: color, borderRightColor: 'transparent' }"></div>
     </div>
-    
+
     <div v-else-if="variant === 'dots'" class="base-loader__dots">
       <span v-for="i in 3" :key="i" class="base-loader__dot" :style="{ background: color }"></span>
     </div>
-    
+
     <div v-else-if="variant === 'bar'" class="base-loader__bar">
       <div class="base-loader__bar-fill" :style="{ background: color }"></div>
     </div>
-    
+
     <p v-if="text" class="base-loader__text">{{ text }}</p>
   </div>
 </template>
@@ -42,27 +42,19 @@ const props = defineProps({
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  padding: 20px;
 }
 
-.base-loader__spinner--sm .spinner {
-  width: 16px;
-  height: 16px;
-}
-
-.base-loader__spinner--md .spinner {
+.base-loader__spinner .spinner {
   width: 24px;
   height: 24px;
+  border-width: 2px;
 }
 
-.base-loader__spinner--lg .spinner {
-  width: 32px;
-  height: 32px;
-}
-
-.base-loader__spinner--xl .spinner {
-  width: 48px;
-  height: 48px;
-}
+.base-loader__spinner--sm .spinner { width: 16px; height: 16px; }
+.base-loader__spinner--md .spinner { width: 24px; height: 24px; }
+.base-loader__spinner--lg .spinner { width: 32px; height: 32px; }
+.base-loader__spinner--xl .spinner { width: 48px; height: 48px; }
 
 .base-loader__dots {
   display: flex;
@@ -76,13 +68,8 @@ const props = defineProps({
   animation: dot-pulse 1.4s ease-in-out infinite;
 }
 
-.base-loader__dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.base-loader__dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
+.base-loader__dot:nth-child(2) { animation-delay: 0.2s; }
+.base-loader__dot:nth-child(3) { animation-delay: 0.4s; }
 
 .base-loader__bar {
   width: 200px;
@@ -114,14 +101,8 @@ const props = defineProps({
 }
 
 @keyframes bar-loading {
-  0% {
-    width: 0%;
-  }
-  50% {
-    width: 70%;
-  }
-  100% {
-    width: 100%;
-  }
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
 }
 </style>

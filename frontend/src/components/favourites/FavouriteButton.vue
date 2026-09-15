@@ -12,7 +12,7 @@ const props = defineProps({
   },
   variant: {
     type: String,
-    default: 'icon', // icon | button
+    default: 'icon',
     validator: (v) => ['icon', 'button'].includes(v)
   }
 })
@@ -24,19 +24,19 @@ const toastStore = useToastStore()
 
 const loading = ref(false)
 
-const isFavourite = computed(() => 
+const isFavourite = computed(() =>
   favouritesStore.isFavourite(props.announcementId)
 )
 
 async function handleToggle(event) {
   if (event) event.stopPropagation()
-  
+
   if (!authStore.isAuthenticated) {
     toastStore.info('Войдите, чтобы добавить в избранное')
     router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
     return
   }
-  
+
   loading.value = true
   try {
     if (isFavourite.value) {
@@ -55,7 +55,6 @@ async function handleToggle(event) {
 </script>
 
 <template>
-  <!-- Icon variant -->
   <button
     v-if="variant === 'icon'"
     class="favourite-btn favourite-btn--icon"
@@ -64,21 +63,15 @@ async function handleToggle(event) {
     :aria-label="isFavourite ? 'Убрать из избранного' : 'Добавить в избранное'"
     @click="handleToggle"
   >
-    <svg 
-      width="20" 
-      height="20" 
-      viewBox="0 0 20 20" 
-      :fill="isFavourite ? 'currentColor' : 'none'"
-    >
-      <path 
-        d="M10 17.5l-1.45-1.32C3.4 11.36 1 9.28 1 6.5 1 4 3 2 5.5 2c1.54 0 3.04.83 3.5 2.36C9.46 2.83 10.96 2 12.5 2 15 2 17 4 17 6.5c0 2.78-2.4 4.86-7.55 9.68L10 17.5z" 
-        stroke="currentColor" 
+    <svg width="20" height="20" viewBox="0 0 20 20" :fill="isFavourite ? 'currentColor' : 'none'">
+      <path
+        d="M10 17.5l-1.45-1.32C3.4 11.36 1 9.28 1 6.5 1 4 3 2 5.5 2c1.54 0 3.04.83 3.5 2.36C9.46 2.83 10.96 2 12.5 2 15 2 17 4 17 6.5c0 2.78-2.4 4.86-7.55 9.68L10 17.5z"
+        stroke="currentColor"
         stroke-width="1.5"
       />
     </svg>
   </button>
-  
-  <!-- Button variant -->
+
   <button
     v-else
     class="favourite-btn favourite-btn--full"
@@ -86,15 +79,10 @@ async function handleToggle(event) {
     :disabled="loading"
     @click="handleToggle"
   >
-    <svg 
-      width="18" 
-      height="18" 
-      viewBox="0 0 20 20" 
-      :fill="isFavourite ? 'currentColor' : 'none'"
-    >
-      <path 
-        d="M10 17.5l-1.45-1.32C3.4 11.36 1 9.28 1 6.5 1 4 3 2 5.5 2c1.54 0 3.04.83 3.5 2.36C9.46 2.83 10.96 2 12.5 2 15 2 17 4 17 6.5c0 2.78-2.4 4.86-7.55 9.68L10 17.5z" 
-        stroke="currentColor" 
+    <svg width="18" height="18" viewBox="0 0 20 20" :fill="isFavourite ? 'currentColor' : 'none'">
+      <path
+        d="M10 17.5l-1.45-1.32C3.4 11.36 1 9.28 1 6.5 1 4 3 2 5.5 2c1.54 0 3.04.83 3.5 2.36C9.46 2.83 10.96 2 12.5 2 15 2 17 4 17 6.5c0 2.78-2.4 4.86-7.55 9.68L10 17.5z"
+        stroke="currentColor"
         stroke-width="1.5"
       />
     </svg>
@@ -119,7 +107,6 @@ async function handleToggle(event) {
   cursor: not-allowed;
 }
 
-/* Icon */
 .favourite-btn--icon {
   width: 40px;
   height: 40px;
@@ -138,7 +125,6 @@ async function handleToggle(event) {
   color: #EF4444;
 }
 
-/* Full */
 .favourite-btn--full {
   padding: 12px 20px;
   font-size: 14px;

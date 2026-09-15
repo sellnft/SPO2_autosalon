@@ -17,6 +17,7 @@ import BaseSkeleton from '@/components/common/BaseSkeleton.vue'
 <style scoped>
 .announcement-skeleton {
   background: white;
+  border: 1px solid #E5E7EB;
   border-radius: 16px;
   overflow: hidden;
 }

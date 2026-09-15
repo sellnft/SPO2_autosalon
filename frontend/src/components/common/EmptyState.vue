@@ -1,25 +1,12 @@
 <script setup>
+import BaseButton from './BaseButton.vue'
+
 defineProps({
-  icon: {
-    type: String,
-    default: 'search'
-  },
-  title: {
-    type: String,
-    default: 'Ничего не найдено'
-  },
-  description: {
-    type: String,
-    default: ''
-  },
-  actionText: {
-    type: String,
-    default: ''
-  },
-  actionLink: {
-    type: String,
-    default: ''
-  }
+  icon: { type: String, default: 'search' },
+  title: { type: String, default: 'Ничего не найдено' },
+  description: { type: String, default: '' },
+  actionText: { type: String, default: '' },
+  actionLink: { type: String, default: '' }
 })
 
 defineEmits(['action'])
@@ -49,17 +36,19 @@ defineEmits(['action'])
         <path d="M24 16v8l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </div>
-    
+
     <h3 class="empty-state__title">{{ title }}</h3>
     <p v-if="description" class="empty-state__description">{{ description }}</p>
-    
-    <BaseButton 
-      v-if="actionText" 
-      variant="primary" 
-      @click="actionLink ? $router.push(actionLink) : $emit('action')"
-    >
-      {{ actionText }}
-    </BaseButton>
+
+    <slot>
+      <BaseButton
+        v-if="actionText"
+        variant="primary"
+        @click="actionLink ? $router.push(actionLink) : $emit('action')"
+      >
+        {{ actionText }}
+      </BaseButton>
+    </slot>
   </div>
 </template>
 

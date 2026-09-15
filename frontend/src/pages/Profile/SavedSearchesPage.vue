@@ -7,6 +7,7 @@ import EmptyState from '@/components/common/EmptyState.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
+import BaseLoader from '@/components/common/BaseLoader.vue'
 import { formatDate } from '@/utils/formatDate'
 
 const router = useRouter()
@@ -32,7 +33,7 @@ function confirmDelete(search) {
 
 async function handleDelete() {
   if (!searchToDelete.value) return
-  
+
   try {
     await subscriptionsStore.deleteSavedSearch(searchToDelete.value.id)
     toastStore.success('Поиск удалён')
@@ -53,23 +54,27 @@ function applySearch(search) {
   <div class="saved-searches-page">
     <div class="container">
       <Breadcrumbs />
-      
+
       <div class="saved-searches-page__header">
-        <h1 class="saved-searches-page__title">Сохранённые поиски</h1>
-        <p class="saved-searches-page__count">
-          {{ subscriptionsStore.savedSearches.length }} поисков
-        </p>
+        <div>
+          <h1 class="saved-searches-page__title">Сохранённые поиски</h1>
+          <p class="saved-searches-page__subtitle">
+            {{ subscriptionsStore.savedSearches.length }} поисков
+          </p>
+        </div>
       </div>
-      
+
+      <BaseLoader v-if="loading" text="Загрузка..." />
+
       <EmptyState
-        v-if="!loading && !subscriptionsStore.savedSearches.length"
+        v-else-if="!subscriptionsStore.savedSearches.length"
         icon="search"
         title="Нет сохранённых поисков"
         description="Сохраняйте параметры поиска, чтобы быстро возвращаться к ним"
         action-text="Найти автомобиль"
         action-link="/announcements"
       />
-      
+
       <div v-else class="saved-searches-page__list">
         <article
           v-for="search in subscriptionsStore.savedSearches"
@@ -78,7 +83,7 @@ function applySearch(search) {
         >
           <div class="saved-search__content">
             <h3 class="saved-search__name">{{ search.name }}</h3>
-            
+
             <div class="saved-search__filters">
               <span v-if="search.filters.brand" class="saved-search__filter">
                 {{ search.filters.brand }}
@@ -96,12 +101,12 @@ function applySearch(search) {
                 {{ search.filters.bodyType }}
               </span>
             </div>
-            
+
             <p class="saved-search__date">
               Создан: {{ formatDate(search.createdAt, 'short') }}
             </p>
           </div>
-          
+
           <div class="saved-search__actions">
             <BaseButton size="sm" @click="applySearch(search)">
               Показать
@@ -117,12 +122,13 @@ function applySearch(search) {
         </article>
       </div>
     </div>
-    
+
     <ConfirmModal
       v-model="showDeleteModal"
       title="Удалить поиск?"
       message="Вы уверены, что хотите удалить этот сохранённый поиск?"
       confirm-text="Удалить"
+      variant="danger"
       @confirm="handleDelete"
     />
   </div>
@@ -138,12 +144,13 @@ function applySearch(search) {
 }
 
 .saved-searches-page__title {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   font-size: 32px;
   font-weight: 700;
+  color: #111827;
 }
 
-.saved-searches-page__count {
+.saved-searches-page__subtitle {
   font-size: 14px;
   color: #6B7280;
 }
@@ -179,6 +186,7 @@ function applySearch(search) {
   margin-bottom: 8px;
   font-size: 16px;
   font-weight: 600;
+  color: #111827;
 }
 
 .saved-search__filters {
@@ -205,6 +213,7 @@ function applySearch(search) {
 .saved-search__actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 @media (max-width: 640px) {
@@ -212,9 +221,13 @@ function applySearch(search) {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .saved-search__actions {
     justify-content: flex-end;
+  }
+
+  .saved-searches-page__title {
+    font-size: 24px;
   }
 }
 </style>

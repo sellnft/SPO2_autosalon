@@ -46,7 +46,7 @@ function handleSave() {
       </div>
       <BaseSwitch v-model="settings.priceChange" @change="handleChange" />
     </div>
-    
+
     <div class="subscription-settings__item">
       <div>
         <p class="subscription-settings__title">Изменение статуса</p>
@@ -56,7 +56,7 @@ function handleSave() {
       </div>
       <BaseSwitch v-model="settings.statusChange" @change="handleChange" />
     </div>
-    
+
     <div class="subscription-settings__item">
       <div>
         <p class="subscription-settings__title">Новые сообщения</p>
@@ -66,7 +66,7 @@ function handleSave() {
       </div>
       <BaseSwitch v-model="settings.messages" @change="handleChange" />
     </div>
-    
+
     <div class="subscription-settings__item">
       <div>
         <p class="subscription-settings__title">Объявление продано</p>
@@ -76,7 +76,7 @@ function handleSave() {
       </div>
       <BaseSwitch v-model="settings.sold" @change="handleChange" />
     </div>
-    
+
     <BaseButton @click="handleSave">Сохранить настройки</BaseButton>
   </div>
 </template>

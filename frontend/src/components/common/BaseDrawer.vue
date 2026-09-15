@@ -63,7 +63,7 @@ onUnmounted(() => {
   <Teleport to="body">
     <Transition name="drawer">
       <div v-if="modelValue" class="base-drawer-overlay" @click="handleOverlayClick">
-        <div 
+        <div
           :class="[
             'base-drawer',
             `base-drawer--${position}`,
@@ -74,17 +74,17 @@ onUnmounted(() => {
         >
           <div class="base-drawer__header">
             <h3 class="base-drawer__title">{{ title }}</h3>
-            <button class="base-drawer__close" @click="close" aria-label="Close">
+            <button class="base-drawer__close" aria-label="Закрыть" @click="close">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               </svg>
             </button>
           </div>
-          
+
           <div class="base-drawer__body">
             <slot />
           </div>
-          
+
           <div v-if="$slots.footer" class="base-drawer__footer">
             <slot name="footer" />
           </div>
@@ -139,17 +139,9 @@ onUnmounted(() => {
   height: 400px;
 }
 
-.base-drawer--sm {
-  width: 300px;
-}
-
-.base-drawer--md {
-  width: 400px;
-}
-
-.base-drawer--lg {
-  width: 600px;
-}
+.base-drawer--sm { width: 300px; }
+.base-drawer--md { width: 400px; }
+.base-drawer--lg { width: 600px; }
 
 .base-drawer__header {
   display: flex;
@@ -171,8 +163,11 @@ onUnmounted(() => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
   color: #6B7280;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -192,7 +187,6 @@ onUnmounted(() => {
   border-top: 1px solid #E5E7EB;
 }
 
-/* Transitions */
 .drawer-enter-active,
 .drawer-leave-active {
   transition: opacity 0.3s ease;

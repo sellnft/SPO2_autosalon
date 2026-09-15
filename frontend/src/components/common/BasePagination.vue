@@ -31,29 +31,29 @@ const totalPages = computed(() => Math.ceil(props.totalItems / props.perPage))
 const pages = computed(() => {
   const pages = []
   const half = Math.floor(props.maxPages / 2)
-  
+
   let start = Math.max(1, props.currentPage - half)
   let end = Math.min(totalPages.value, start + props.maxPages - 1)
-  
+
   if (end - start < props.maxPages - 1) {
     start = Math.max(1, end - props.maxPages + 1)
   }
-  
+
   for (let i = start; i <= end; i++) {
     pages.push(i)
   }
-  
+
   return pages
 })
 
 const showFirstEllipsis = computed(() => pages.value[0] > 1)
 const showLastEllipsis = computed(() => pages.value[pages.value.length - 1] < totalPages.value)
 
-const startItem = computed(() => 
+const startItem = computed(() =>
   props.totalItems === 0 ? 0 : (props.currentPage - 1) * props.perPage + 1
 )
 
-const endItem = computed(() => 
+const endItem = computed(() =>
   Math.min(props.currentPage * props.perPage, props.totalItems)
 )
 
@@ -78,24 +78,24 @@ function nextPage() {
     <p v-if="showTotal" class="base-pagination__total">
       Показано {{ startItem }}-{{ endItem }} из {{ totalItems }}
     </p>
-    
+
     <nav class="base-pagination__nav" aria-label="Pagination">
       <button
         class="base-pagination__btn"
         :disabled="currentPage === 1"
+        aria-label="Предыдущая страница"
         @click="previousPage"
-        aria-label="Previous page"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <path d="M12.5 15l-5-5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
-      
+
       <template v-if="showFirstEllipsis">
         <button class="base-pagination__btn" @click="goToPage(1)">1</button>
         <span class="base-pagination__ellipsis">...</span>
       </template>
-      
+
       <button
         v-for="page in pages"
         :key="page"
@@ -107,19 +107,19 @@ function nextPage() {
       >
         {{ page }}
       </button>
-      
+
       <template v-if="showLastEllipsis">
         <span class="base-pagination__ellipsis">...</span>
         <button class="base-pagination__btn" @click="goToPage(totalPages)">
           {{ totalPages }}
         </button>
       </template>
-      
+
       <button
         class="base-pagination__btn"
         :disabled="currentPage === totalPages"
+        aria-label="Следующая страница"
         @click="nextPage"
-        aria-label="Next page"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <path d="M7.5 5l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -159,16 +159,21 @@ function nextPage() {
   font-size: 14px;
   font-weight: 500;
   color: #374151;
+  background: white;
+  border: 1px solid #E5E7EB;
   border-radius: 8px;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
 .base-pagination__btn:hover:not(:disabled):not(.base-pagination__btn--active) {
   background: #F3F4F6;
+  border-color: #D1D5DB;
 }
 
 .base-pagination__btn--active {
   background: #0A84FF;
+  border-color: #0A84FF;
   color: white;
 }
 
@@ -185,7 +190,12 @@ function nextPage() {
 @media (max-width: 640px) {
   .base-pagination {
     flex-direction: column;
-    gap: 8px;
+    gap: 12px;
+  }
+
+  .base-pagination__nav {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 </style>

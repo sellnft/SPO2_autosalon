@@ -13,7 +13,7 @@ const announcementsStore = useAnnouncementsStore()
 const loading = ref(true)
 
 const favouriteAnnouncements = computed(() => {
-  const ids = favouritesStore.favourites.map(f => f.announcementId)
+  const ids = favouritesStore.favouriteIds
   return announcementsStore.announcements.filter(a => ids.includes(a.id))
 })
 
@@ -33,18 +33,18 @@ onMounted(async () => {
   <div class="favourites-page">
     <div class="container">
       <Breadcrumbs />
-      
+
       <div class="favourites-page__header">
         <h1 class="favourites-page__title">Избранное</h1>
         <p class="favourites-page__count">
           {{ favouriteAnnouncements.length }} объявлений
         </p>
       </div>
-      
+
       <div v-if="loading" class="favourites-page__grid">
         <AnnouncementSkeleton v-for="i in 6" :key="i" />
       </div>
-      
+
       <EmptyState
         v-else-if="!favouriteAnnouncements.length"
         icon="heart"
@@ -53,7 +53,7 @@ onMounted(async () => {
         action-text="Перейти в каталог"
         action-link="/announcements"
       />
-      
+
       <div v-else class="favourites-page__grid">
         <AnnouncementCard
           v-for="announcement in favouriteAnnouncements"
@@ -78,6 +78,7 @@ onMounted(async () => {
   margin-bottom: 8px;
   font-size: 32px;
   font-weight: 700;
+  color: #111827;
 }
 
 .favourites-page__count {
@@ -100,6 +101,10 @@ onMounted(async () => {
 @media (max-width: 640px) {
   .favourites-page__grid {
     grid-template-columns: 1fr;
+  }
+
+  .favourites-page__title {
+    font-size: 24px;
   }
 }
 </style>

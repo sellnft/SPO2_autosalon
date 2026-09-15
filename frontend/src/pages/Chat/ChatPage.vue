@@ -16,7 +16,6 @@ const isMobileView = computed(() => chatStore.currentChatId !== null)
 async function loadChats() {
   try {
     await chatStore.fetchChats()
-    
     if (route.params.id) {
       await chatStore.selectChat(route.params.id)
     }
@@ -61,7 +60,7 @@ onUnmounted(() => {
       <div class="chat-page__breadcrumbs">
         <Breadcrumbs />
       </div>
-      
+
       <div class="chat-page__container">
         <aside
           :class="[
@@ -71,7 +70,7 @@ onUnmounted(() => {
         >
           <ChatList @select="handleSelectChat" />
         </aside>
-        
+
         <main
           :class="[
             'chat-page__window',
@@ -116,7 +115,6 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-/* Mobile */
 @media (max-width: 768px) {
   .chat-page {
     padding: 0;
@@ -126,7 +124,7 @@ onUnmounted(() => {
   .chat-page__breadcrumbs {
     display: none;
   }
-  
+
   .chat-page__container {
     grid-template-columns: 1fr;
     height: 100%;
@@ -134,15 +132,15 @@ onUnmounted(() => {
     border: none;
     gap: 0;
   }
-  
+
   .chat-page__list {
     border-right: none;
   }
-  
+
   .chat-page__list--hidden-mobile {
     display: none;
   }
-  
+
   .chat-page__window--hidden-mobile {
     display: none;
   }

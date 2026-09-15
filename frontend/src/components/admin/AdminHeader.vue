@@ -1,15 +1,17 @@
 <script setup>
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import BaseDropdown from '@/components/common/BaseDropdown.vue'
 
 const emit = defineEmits(['toggle-sidebar'])
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
 const user = computed(() => authStore.user)
+const pageTitle = computed(() => route.meta?.title || 'Админ')
 
 const menuItems = [
   { label: 'На сайт', action: 'home' },
@@ -37,14 +39,14 @@ function handleSelect(item) {
         <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </button>
-    
+
     <div class="admin-header__breadcrumb">
       <span class="admin-header__breadcrumb-prefix">/</span>
       <span class="admin-header__breadcrumb-current">
-        {{ $route.meta.title || 'Админ' }}
+        {{ pageTitle }}
       </span>
     </div>
-    
+
     <div class="admin-header__actions">
       <BaseDropdown :items="menuItems" @select="handleSelect">
         <template #trigger>

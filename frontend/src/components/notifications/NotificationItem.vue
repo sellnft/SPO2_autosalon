@@ -20,7 +20,7 @@ const iconType = computed(() => {
     price: '💰',
     status: '✅',
     sold: '🎉',
-    support: '💬',
+    support: '📞',
     security: '🔒',
     system: '⚙️'
   }
@@ -31,7 +31,7 @@ async function handleClick() {
   if (!props.notification.read) {
     await notificationsStore.markAsRead(props.notification.id)
   }
-  
+
   if (props.notification.link) {
     router.push(props.notification.link)
   }
@@ -46,15 +46,15 @@ async function handleClick() {
     <div class="notification-item__icon" :data-type="notification.type">
       {{ iconType }}
     </div>
-    
+
     <div class="notification-item__content">
       <div class="notification-item__header">
         <p class="notification-item__title">{{ notification.title }}</p>
         <span v-if="!notification.read" class="notification-item__dot"></span>
       </div>
-      
+
       <p class="notification-item__message">{{ notification.message }}</p>
-      
+
       <p class="notification-item__time">
         {{ formatDate(notification.createdAt, 'relative') }}
       </p>
@@ -100,22 +100,11 @@ async function handleClick() {
   background: #F3F4F6;
 }
 
-.notification-item__icon[data-type="chat"] {
-  background: #DBEAFE;
-}
-
-.notification-item__icon[data-type="price"] {
-  background: #FEF3C7;
-}
-
+.notification-item__icon[data-type="chat"] { background: #DBEAFE; }
+.notification-item__icon[data-type="price"] { background: #FEF3C7; }
 .notification-item__icon[data-type="status"],
-.notification-item__icon[data-type="sold"] {
-  background: #D1FAE5;
-}
-
-.notification-item__icon[data-type="security"] {
-  background: #FEE2E2;
-}
+.notification-item__icon[data-type="sold"] { background: #D1FAE5; }
+.notification-item__icon[data-type="security"] { background: #FEE2E2; }
 
 .notification-item__content {
   flex: 1;
@@ -140,6 +129,7 @@ async function handleClick() {
   height: 8px;
   background: #0A84FF;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .notification-item__message {

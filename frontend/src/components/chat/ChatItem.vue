@@ -35,7 +35,7 @@ const preview = computed(() => {
     <div class="chat-item__avatar">
       {{ initials }}
     </div>
-    
+
     <div class="chat-item__content">
       <div class="chat-item__top">
         <span class="chat-item__name">{{ chat.sellerName || chat.buyerName }}</span>
@@ -43,11 +43,11 @@ const preview = computed(() => {
           {{ formatDate(chat.lastMessageAt, 'relative') }}
         </span>
       </div>
-      
+
       <p class="chat-item__announcement">
         {{ chat.announcementTitle }}
       </p>
-      
+
       <div class="chat-item__bottom">
         <p class="chat-item__preview">{{ preview }}</p>
         <span v-if="chat.unreadCount" class="chat-item__badge">

@@ -1,25 +1,25 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
+import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  loadEnv(mode, process.cwd(), '')
   
   return {
     plugins: [vue()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
-        '@components': path.resolve(__dirname, './src/components'),
-        '@pages': path.resolve(__dirname, './src/pages'),
-        '@layouts': path.resolve(__dirname, './src/layouts'),
-        '@stores': path.resolve(__dirname, './src/stores'),
-        '@services': path.resolve(__dirname, './src/services'),
-        '@composables': path.resolve(__dirname, './src/composables'),
-        '@utils': path.resolve(__dirname, './src/utils'),
-        '@config': path.resolve(__dirname, './src/config'),
-        '@assets': path.resolve(__dirname, './src/assets'),
-        '@mock': path.resolve(__dirname, './src/mock')
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+        '@components': fileURLToPath(new URL('./src/components', import.meta.url)),
+        '@pages': fileURLToPath(new URL('./src/pages', import.meta.url)),
+        '@layouts': fileURLToPath(new URL('./src/layouts', import.meta.url)),
+        '@stores': fileURLToPath(new URL('./src/stores', import.meta.url)),
+        '@services': fileURLToPath(new URL('./src/services', import.meta.url)),
+        '@composables': fileURLToPath(new URL('./src/composables', import.meta.url)),
+        '@utils': fileURLToPath(new URL('./src/utils', import.meta.url)),
+        '@config': fileURLToPath(new URL('./src/config', import.meta.url)),
+        '@assets': fileURLToPath(new URL('./src/assets', import.meta.url)),
+        '@mock': fileURLToPath(new URL('./src/mock', import.meta.url))
       }
     },
     server: {
@@ -32,7 +32,7 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       assetsDir: 'assets',
       sourcemap: false,
-      minify: 'terser',
+      minify: 'esbuild',
       rollupOptions: {
         output: {
           manualChunks: {

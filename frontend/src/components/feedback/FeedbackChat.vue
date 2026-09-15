@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, nextTick, onMounted } from 'vue'
 import { useFeedbackStore } from '@/stores/feedback'
+import { useAuthStore } from '@/stores/auth'
 import { useToastStore } from '@/stores/toast'
 import { formatDate } from '@/utils/formatDate'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -13,6 +14,7 @@ const props = defineProps({
 })
 
 const feedbackStore = useFeedbackStore()
+const authStore = useAuthStore()
 const toastStore = useToastStore()
 
 const text = ref('')
@@ -33,10 +35,10 @@ function scrollToBottom(smooth = false) {
 async function handleSend() {
   const content = text.value.trim()
   if (!content || sending.value) return
-  
+
   sending.value = true
   text.value = ''
-  
+
   try {
     await feedbackStore.sendMessage(props.feedback.id, content)
     scrollToBottom(true)
@@ -62,7 +64,7 @@ function autoResize(event) {
 }
 
 watch(
-  () => props.feedback.messages.length,
+  () => props.feedback.messages?.length,
   () => scrollToBottom(true)
 )
 
@@ -85,7 +87,7 @@ onMounted(() => {
         <div class="feedback-chat__avatar">
           {{ message.authorType === 'admin' ? '🛡️' : '👤' }}
         </div>
-        
+
         <div class="feedback-chat__content">
           <div class="feedback-chat__meta">
             <span class="feedback-chat__author">
@@ -95,14 +97,14 @@ onMounted(() => {
               {{ formatDate(message.createdAt, 'datetime') }}
             </span>
           </div>
-          
+
           <div class="feedback-chat__bubble">
             {{ message.content }}
           </div>
         </div>
       </div>
     </div>
-    
+
     <div v-if="feedback.status !== 'closed'" class="feedback-chat__input">
       <textarea
         v-model="text"
@@ -113,7 +115,7 @@ onMounted(() => {
         @keydown="handleKeydown"
         @input="autoResize"
       ></textarea>
-      
+
       <BaseButton
         :disabled="!text.trim()"
         :loading="sending"
@@ -122,7 +124,7 @@ onMounted(() => {
         Отправить
       </BaseButton>
     </div>
-    
+
     <div v-else class="feedback-chat__closed">
       Обращение закрыто. Для продолжения создайте новое обращение.
     </div>

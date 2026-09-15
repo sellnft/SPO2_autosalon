@@ -8,17 +8,17 @@ export const useFeedbackStore = defineStore('feedback', () => {
   const loading = ref(false)
   const error = ref(null)
 
-  const unreadCount = computed(() => 
+  const unreadCount = computed(() =>
     feedback.value.reduce((sum, f) => {
-      const unread = f.messages.filter(m => 
+      const unread = f.messages?.filter(m =>
         m.authorType === 'admin' && !m.read
-      ).length
+      ).length || 0
       return sum + unread
     }, 0)
   )
 
-  const openCount = computed(() => 
-    feedback.value.filter(f => 
+  const openCount = computed(() =>
+    feedback.value.filter(f =>
       ['open', 'in_progress', 'waiting_user'].includes(f.status)
     ).length
   )
@@ -42,22 +42,20 @@ export const useFeedbackStore = defineStore('feedback', () => {
     error.value = null
     try {
       currentFeedback.value = await feedbackApi.getFeedbackById(id)
-      
-      // Помечаем сообщения админа как прочитанные
+
       if (currentFeedback.value) {
-        currentFeedback.value.messages.forEach(m => {
+        currentFeedback.value.messages?.forEach(m => {
           if (m.authorType === 'admin') m.read = true
         })
-        
-        // Обновляем и в списке
+
         const item = feedback.value.find(f => f.id === Number(id))
         if (item) {
-          item.messages.forEach(m => {
+          item.messages?.forEach(m => {
             if (m.authorType === 'admin') m.read = true
           })
         }
       }
-      
+
       return currentFeedback.value
     } catch (err) {
       error.value = err.message
@@ -84,23 +82,28 @@ export const useFeedbackStore = defineStore('feedback', () => {
   async function sendMessage(feedbackId, content) {
     try {
       const message = await feedbackApi.sendMessage(feedbackId, content)
-      
-      // Обновляем локально
+
       const item = feedback.value.find(f => f.id === Number(feedbackId))
       if (item) {
         item.messages.push(message)
         item.updatedAt = message.createdAt
       }
-      
+
       if (currentFeedback.value?.id === Number(feedbackId)) {
         currentFeedback.value.messages.push(message)
       }
-      
+
       return message
     } catch (err) {
       error.value = err.message
       throw err
     }
+  }
+
+  function reset() {
+    feedback.value = []
+    currentFeedback.value = null
+    error.value = null
   }
 
   return {
@@ -113,6 +116,7 @@ export const useFeedbackStore = defineStore('feedback', () => {
     fetchFeedback,
     fetchFeedbackById,
     createFeedback,
-    sendMessage
+    sendMessage,
+    reset
   }
 })

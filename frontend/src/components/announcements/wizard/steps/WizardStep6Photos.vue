@@ -14,6 +14,7 @@ const fileInput = ref(null)
 const isDragging = ref(false)
 
 const MAX_PHOTOS = 20
+const MAX_SIZE = 10 * 1024 * 1024
 
 function triggerFileInput() {
   fileInput.value?.click()
@@ -29,20 +30,18 @@ async function handleFiles(files) {
 
   for (const file of files) {
     if (!file.type.startsWith('image/')) {
-      toastStore.error('Только изображения')
+      toastStore.error(`${file.name}: не изображение`)
       continue
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > MAX_SIZE) {
       toastStore.error(`${file.name}: превышает 10 МБ`)
       continue
     }
 
-    // В реальном проекте здесь была бы загрузка на сервер
-    // Сейчас используем локальный URL
     const url = URL.createObjectURL(file)
     currentPhotos.push({
-      id: `photo-${Date.now()}-${Math.random()}`,
+      id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       url,
       name: file.name,
       main: currentPhotos.length === 0
@@ -72,12 +71,11 @@ function handleDragLeave() {
 
 function removePhoto(photoId) {
   const photos = props.modelValue.photos.filter(p => p.id !== photoId)
-  
-  // Если удалили главное фото, делаем первое главным
+
   if (photos.length && !photos.some(p => p.main)) {
     photos[0].main = true
   }
-  
+
   update('photos', photos)
 }
 
@@ -123,11 +121,11 @@ function update(key, value) {
         hidden
         @change="handleFileInput"
       />
-      
+
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
         <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      
+
       <p class="step__dropzone-title">
         Перетащите фото или нажмите для выбора
       </p>
@@ -138,7 +136,6 @@ function update(key, value) {
 
     <p v-if="errors.photos" class="step__error">{{ errors.photos }}</p>
 
-    <!-- Preview -->
     <div v-if="modelValue.photos.length" class="step__photos">
       <div
         v-for="(photo, index) in modelValue.photos"
@@ -146,36 +143,40 @@ function update(key, value) {
         :class="['step__photo', { 'step__photo--main': photo.main }]"
       >
         <img :src="photo.url" :alt="photo.name" class="step__photo-image" />
-        
+
         <div class="step__photo-actions">
           <button
             v-if="!photo.main"
+            type="button"
             class="step__photo-btn"
             title="Сделать главным"
             @click.stop="setMainPhoto(photo.id)"
           >
             ★
           </button>
-          
+
           <button
             v-if="index > 0"
+            type="button"
             class="step__photo-btn"
             title="Влево"
             @click.stop="movePhoto(photo.id, 'left')"
           >
             ←
           </button>
-          
+
           <button
             v-if="index < modelValue.photos.length - 1"
+            type="button"
             class="step__photo-btn"
             title="Вправо"
             @click.stop="movePhoto(photo.id, 'right')"
           >
             →
           </button>
-          
+
           <button
+            type="button"
             class="step__photo-btn step__photo-btn--delete"
             title="Удалить"
             @click.stop="removePhoto(photo.id)"
@@ -183,7 +184,7 @@ function update(key, value) {
             ✕
           </button>
         </div>
-        
+
         <span v-if="photo.main" class="step__photo-badge">Главное</span>
       </div>
     </div>

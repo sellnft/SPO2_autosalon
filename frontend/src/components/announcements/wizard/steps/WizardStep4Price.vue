@@ -1,6 +1,7 @@
 <script setup>
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSwitch from '@/components/common/BaseSwitch.vue'
+import { formatPrice } from '@/utils/formatPrice'
 
 const props = defineProps({
   modelValue: Object,
@@ -24,12 +25,11 @@ function update(key, value) {
         placeholder="5000000"
         :error="errors.price"
         required
-        size="lg"
         @update:model-value="update('price', $event)"
       />
-      
+
       <p v-if="modelValue.price" class="step__price-hint">
-        {{ Number(modelValue.price).toLocaleString('ru-RU') }} ₽
+        {{ formatPrice(modelValue.price) }}
       </p>
     </div>
 

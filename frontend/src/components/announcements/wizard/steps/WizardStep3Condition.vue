@@ -1,7 +1,7 @@
 <script setup>
+import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
 import BaseSwitch from '@/components/common/BaseSwitch.vue'
-import BaseInput from '@/components/common/BaseInput.vue'
 
 const props = defineProps({
   modelValue: Object,
@@ -36,14 +36,14 @@ function update(key, value) {
         label="Состояние"
         @update:model-value="update('condition', $event)"
       />
-      
+
       <BaseSelect
         :model-value="modelValue.steeringWheel"
         :options="steeringOptions"
         label="Руль"
         @update:model-value="update('steeringWheel', $event)"
       />
-      
+
       <BaseInput
         :model-value="modelValue.owners"
         label="Количество владельцев"
@@ -51,7 +51,7 @@ function update(key, value) {
         placeholder="1"
         @update:model-value="update('owners', $event)"
       />
-      
+
       <BaseInput
         :model-value="modelValue.country"
         label="Страна регистрации"
@@ -71,7 +71,7 @@ function update(key, value) {
           @update:model-value="update('hasAccidents', $event)"
         />
       </div>
-      
+
       <div class="step__switch-item">
         <div>
           <p class="step__switch-title">Сервисная история</p>

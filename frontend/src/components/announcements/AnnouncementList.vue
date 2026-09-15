@@ -1,5 +1,6 @@
 <script setup>
 import { useRouter } from 'vue-router'
+import { useFavouritesStore } from '@/stores/favourites'
 import { formatPrice } from '@/utils/formatPrice'
 import { formatMileage } from '@/utils/formatMileage'
 import FavouriteButton from '@/components/favourites/FavouriteButton.vue'
@@ -12,6 +13,11 @@ defineProps({
 })
 
 const router = useRouter()
+const favouritesStore = useFavouritesStore()
+
+function isFavourite(id) {
+  return favouritesStore.isFavourite(id)
+}
 </script>
 
 <template>
@@ -23,35 +29,36 @@ const router = useRouter()
       @click="router.push(`/announcements/${announcement.id}`)"
     >
       <div class="announcement-item__image-wrapper">
-        <img 
-          :src="announcement.photos[0]" 
+        <img
+          :src="announcement.photos[0]"
           :alt="announcement.title"
           class="announcement-item__image"
           loading="lazy"
         />
-        <FavouriteButton 
+        <FavouriteButton
           :announcement-id="announcement.id"
+          :is-favourite="isFavourite(announcement.id)"
           class="announcement-item__favourite"
         />
       </div>
-      
+
       <div class="announcement-item__content">
         <h3 class="announcement-item__title">
           {{ announcement.brand }} {{ announcement.model }}, {{ announcement.year }}
         </h3>
-        
+
         <div class="announcement-item__specs">
           <span>{{ formatMileage(announcement.mileage) }}</span>
           <span>{{ announcement.engineType }} {{ announcement.engineVolume }}л</span>
           <span>{{ announcement.transmission }}</span>
           <span>{{ announcement.drive }}</span>
         </div>
-        
+
         <p class="announcement-item__location">
           {{ announcement.city }}
         </p>
       </div>
-      
+
       <div class="announcement-item__price">
         {{ formatPrice(announcement.price) }}
       </div>
@@ -139,10 +146,14 @@ const router = useRouter()
   .announcement-item {
     flex-direction: column;
   }
-  
+
   .announcement-item__image-wrapper {
     width: 100%;
     height: 200px;
+  }
+
+  .announcement-item__price {
+    align-self: flex-start;
   }
 }
 </style>

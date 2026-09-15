@@ -44,9 +44,9 @@ const filteredAnnouncements = computed(() => {
       a.brand?.toLowerCase().includes(q) ||
       a.model?.toLowerCase().includes(q) ||
       a.sellerName?.toLowerCase().includes(q)
-    
+
     const matchesStatus = !filters.value.status || a.status === filters.value.status
-    
+
     return matchesSearch && matchesStatus
   })
 })
@@ -79,7 +79,7 @@ onMounted(() => {
         </p>
       </div>
     </header>
-    
+
     <AdminFilters
       v-model:search="search"
       :filters="filterConfig"
@@ -87,7 +87,7 @@ onMounted(() => {
       @update:filter="handleFilter"
       @reset="resetFilters"
     />
-    
+
     <AdminTable
       :columns="columns"
       :items="filteredAnnouncements"
@@ -102,6 +102,7 @@ onMounted(() => {
             :src="item.photos[0]"
             :alt="item.title"
             class="admin-announcements__image"
+            loading="lazy"
           />
           <div class="admin-announcements__info">
             <p class="admin-announcements__name">{{ item.brand }} {{ item.model }}</p>
@@ -111,15 +112,15 @@ onMounted(() => {
           </div>
         </div>
       </template>
-      
+
       <template #price="{ item }">
         <span class="admin-announcements__price">{{ formatPrice(item.price) }}</span>
       </template>
-      
+
       <template #status="{ item }">
         <AdminStatusBadge :status="item.status" type="announcement" />
       </template>
-      
+
       <template #createdAt="{ item }">
         {{ formatDate(item.createdAt, 'short') }}
       </template>

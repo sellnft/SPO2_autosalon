@@ -46,19 +46,19 @@ function validate() {
   errors.category = ''
   errors.subject = ''
   errors.message = ''
-  
+
   if (!form.category) errors.category = 'Выберите тему'
   if (!form.subject) errors.subject = 'Введите заголовок'
   else if (form.subject.length < 5) errors.subject = 'Минимум 5 символов'
   if (!form.message) errors.message = 'Опишите проблему'
   else if (form.message.length < 20) errors.message = 'Минимум 20 символов'
-  
+
   return !Object.values(errors).some(Boolean)
 }
 
 async function handleSubmit() {
   if (!validate()) return
-  
+
   loading.value = true
   try {
     const feedback = await feedbackStore.createFeedback({
@@ -67,11 +67,10 @@ async function handleSubmit() {
       subject: form.subject,
       message: form.message
     })
-    
+
     toastStore.success('Обращение создано')
     emit('success', feedback)
-    
-    // Сброс формы
+
     Object.assign(form, {
       category: '',
       priority: 'normal',
@@ -109,7 +108,7 @@ async function handleSubmit() {
       </div>
       <p v-if="errors.category" class="feedback-form__error">{{ errors.category }}</p>
     </div>
-    
+
     <div class="feedback-form__row">
       <BaseInput
         v-model="form.subject"
@@ -118,7 +117,7 @@ async function handleSubmit() {
         :error="errors.subject"
         required
       />
-      
+
       <div class="feedback-form__group">
         <label class="feedback-form__label">Приоритет</label>
         <div class="feedback-form__priorities">
@@ -138,7 +137,7 @@ async function handleSubmit() {
         </div>
       </div>
     </div>
-    
+
     <BaseTextarea
       v-model="form.message"
       label="Описание проблемы"
@@ -148,7 +147,7 @@ async function handleSubmit() {
       :error="errors.message"
       required
     />
-    
+
     <div class="feedback-form__actions">
       <BaseButton
         v-if="cancel"
@@ -257,21 +256,10 @@ async function handleSubmit() {
   border-color: transparent;
 }
 
-.feedback-form__priority--low.feedback-form__priority--active {
-  background: #6B7280;
-}
-
-.feedback-form__priority--normal.feedback-form__priority--active {
-  background: #0A84FF;
-}
-
-.feedback-form__priority--high.feedback-form__priority--active {
-  background: #F59E0B;
-}
-
-.feedback-form__priority--critical.feedback-form__priority--active {
-  background: #EF4444;
-}
+.feedback-form__priority--low.feedback-form__priority--active { background: #6B7280; }
+.feedback-form__priority--normal.feedback-form__priority--active { background: #0A84FF; }
+.feedback-form__priority--high.feedback-form__priority--active { background: #F59E0B; }
+.feedback-form__priority--critical.feedback-form__priority--active { background: #EF4444; }
 
 .feedback-form__error {
   font-size: 12px;
@@ -290,11 +278,11 @@ async function handleSubmit() {
   .feedback-form__categories {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .feedback-form__row {
     grid-template-columns: 1fr;
   }
-  
+
   .feedback-form__actions {
     flex-direction: column;
   }

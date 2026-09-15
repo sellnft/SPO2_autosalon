@@ -35,7 +35,7 @@ function hide() {
 </script>
 
 <template>
-  <div 
+  <div
     class="base-tooltip-wrapper"
     @mouseenter="show"
     @mouseleave="hide"
@@ -43,9 +43,9 @@ function hide() {
     @focusout="hide"
   >
     <slot />
-    
+
     <Transition name="tooltip">
-      <div 
+      <div
         v-if="isVisible"
         :class="['base-tooltip', `base-tooltip--${placement}`]"
         role="tooltip"
@@ -132,7 +132,6 @@ function hide() {
   margin-top: -3px;
 }
 
-/* Transition */
 .tooltip-enter-active,
 .tooltip-leave-active {
   transition: opacity 0.2s ease;

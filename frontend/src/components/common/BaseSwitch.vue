@@ -70,6 +70,7 @@ function handleChange(event) {
   position: relative;
   width: 44px;
   height: 24px;
+  flex-shrink: 0;
   background: #D1D5DB;
   border-radius: 12px;
   transition: all 0.2s;

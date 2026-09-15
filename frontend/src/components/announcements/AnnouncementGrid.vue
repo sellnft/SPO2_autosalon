@@ -5,10 +5,6 @@ defineProps({
   announcements: {
     type: Array,
     default: () => []
-  },
-  loading: {
-    type: Boolean,
-    default: false
   }
 })
 </script>

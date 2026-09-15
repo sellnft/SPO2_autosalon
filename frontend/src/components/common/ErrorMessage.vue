@@ -1,21 +1,11 @@
 <script setup>
+import BaseButton from './BaseButton.vue'
+
 defineProps({
-  title: {
-    type: String,
-    default: 'Произошла ошибка'
-  },
-  message: {
-    type: String,
-    default: 'Что-то пошло не так. Попробуйте позже.'
-  },
-  retry: {
-    type: Boolean,
-    default: false
-  },
-  retryText: {
-    type: String,
-    default: 'Повторить'
-  }
+  title: { type: String, default: 'Произошла ошибка' },
+  message: { type: String, default: 'Что-то пошло не так. Попробуйте позже.' },
+  retry: { type: Boolean, default: false },
+  retryText: { type: String, default: 'Повторить' }
 })
 
 defineEmits(['retry'])
@@ -30,13 +20,13 @@ defineEmits(['retry'])
         <circle cx="16" cy="22" r="1" fill="currentColor"/>
       </svg>
     </div>
-    
+
     <h3 class="error-message__title">{{ title }}</h3>
     <p class="error-message__text">{{ message }}</p>
-    
-    <BaseButton 
-      v-if="retry" 
-      variant="outline" 
+
+    <BaseButton
+      v-if="retry"
+      variant="outline"
       size="sm"
       @click="$emit('retry')"
     >

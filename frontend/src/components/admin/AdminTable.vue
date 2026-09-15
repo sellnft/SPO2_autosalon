@@ -17,6 +17,8 @@ defineProps({
     default: 'Нет данных'
   }
 })
+
+defineEmits(['row-click'])
 </script>
 
 <template>

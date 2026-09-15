@@ -63,13 +63,13 @@ onUnmounted(() => {
   <header class="app-header">
     <div class="app-header__container">
       <AppLogo class="app-header__logo" />
-      
+
       <nav class="app-header__nav" aria-label="Основная навигация">
         <RouterLink to="/" class="app-header__nav-link">Главная</RouterLink>
         <RouterLink to="/announcements" class="app-header__nav-link">Каталог</RouterLink>
         <RouterLink to="/feedback" class="app-header__nav-link">Поддержка</RouterLink>
       </nav>
-      
+
       <div class="app-header__search">
         <button
           class="app-header__action"
@@ -81,7 +81,7 @@ onUnmounted(() => {
             <path d="M15 15l4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
         </button>
-        
+
         <Transition name="search">
           <form v-if="isSearchOpen" class="app-header__search-form" @submit.prevent="handleSearch">
             <input
@@ -91,13 +91,18 @@ onUnmounted(() => {
               class="app-header__search-input"
               autofocus
             />
-            <button type="button" class="app-header__search-close" @click="isSearchOpen = false" aria-label="Закрыть поиск">
+            <button
+              type="button"
+              class="app-header__search-close"
+              aria-label="Закрыть поиск"
+              @click="isSearchOpen = false"
+            >
               ✕
             </button>
           </form>
         </Transition>
       </div>
-      
+
       <div class="app-header__actions">
         <RouterLink
           v-if="isAuthenticated"
@@ -109,10 +114,10 @@ onUnmounted(() => {
             <path d="M10 17.5l-1.45-1.32C3.4 11.36 1 9.28 1 6.5 1 4 3 2 5.5 2c1.54 0 3.04.83 3.5 2.36C9.46 2.83 10.96 2 12.5 2 15 2 17 4 17 6.5c0 2.78-2.4 4.86-7.55 9.68L10 17.5z" stroke="currentColor" stroke-width="1.5"/>
           </svg>
         </RouterLink>
-        
+
         <NotificationBell v-if="isAuthenticated" />
         <UserMenu v-if="isAuthenticated" />
-        
+
         <div v-else class="app-header__auth">
           <BaseButton size="sm" variant="ghost" @click="router.push('/login')">
             Войти
@@ -121,7 +126,7 @@ onUnmounted(() => {
             Регистрация
           </BaseButton>
         </div>
-        
+
         <button
           class="app-header__menu-toggle"
           :aria-expanded="isMobileMenuOpen"
@@ -137,7 +142,7 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
-    
+
     <MobileMenu
       v-if="isMobileMenuOpen"
       @close="isMobileMenuOpen = false"
@@ -299,11 +304,11 @@ onUnmounted(() => {
     padding: 0 20px;
     gap: 16px;
   }
-  
+
   .app-header__nav {
     display: none;
   }
-  
+
   .app-header__search-form {
     width: 320px;
   }
@@ -315,12 +320,12 @@ onUnmounted(() => {
     padding: 0 16px;
     gap: 8px;
   }
-  
+
   .app-header__search {
     flex: 1;
     justify-content: flex-end;
   }
-  
+
   .app-header__search-form {
     position: fixed;
     top: 60px;
@@ -334,19 +339,19 @@ onUnmounted(() => {
     border-top: none;
     padding: 0 16px;
   }
-  
+
   .app-header__search-input {
     padding: 14px 0;
   }
-  
+
   .app-header__auth {
     display: none;
   }
-  
+
   .app-header__menu-toggle {
     display: flex;
   }
-  
+
   .app-header__action {
     width: 44px;
     height: 44px;

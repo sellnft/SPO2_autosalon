@@ -6,9 +6,10 @@ export const useFavouritesStore = defineStore('favourites', () => {
   const favourites = ref([])
   const loading = ref(false)
   const error = ref(null)
-  
+
   const favouritesCount = computed(() => favourites.value.length)
-  
+  const favouriteIds = computed(() => favourites.value.map(f => f.announcementId))
+
   async function fetchFavourites() {
     loading.value = true
     error.value = null
@@ -22,7 +23,7 @@ export const useFavouritesStore = defineStore('favourites', () => {
       loading.value = false
     }
   }
-  
+
   async function addToFavourites(announcementId) {
     try {
       const favourite = await favouritesApi.addToFavourites(announcementId)
@@ -33,29 +34,38 @@ export const useFavouritesStore = defineStore('favourites', () => {
       throw err
     }
   }
-  
+
   async function removeFromFavourites(announcementId) {
     try {
       await favouritesApi.removeFromFavourites(announcementId)
-      favourites.value = favourites.value.filter(f => f.announcementId !== announcementId)
+      favourites.value = favourites.value.filter(
+        f => f.announcementId !== Number(announcementId)
+      )
     } catch (err) {
       error.value = err.message
       throw err
     }
   }
-  
+
   function isFavourite(announcementId) {
-    return favourites.value.some(f => f.announcementId === announcementId)
+    return favourites.value.some(f => f.announcementId === Number(announcementId))
   }
-  
+
+  function reset() {
+    favourites.value = []
+    error.value = null
+  }
+
   return {
     favourites,
     loading,
     error,
     favouritesCount,
+    favouriteIds,
     fetchFavourites,
     addToFavourites,
     removeFromFavourites,
-    isFavourite
+    isFavourite,
+    reset
   }
 })

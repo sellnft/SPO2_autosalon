@@ -51,9 +51,9 @@ const filteredLogs = computed(() => {
       log.actorName?.toLowerCase().includes(q) ||
       log.action?.toLowerCase().includes(q) ||
       log.details?.toLowerCase().includes(q)
-    
+
     const matchesAction = !filters.value.action || log.action === filters.value.action
-    
+
     return matchesSearch && matchesAction
   })
 })
@@ -82,7 +82,7 @@ onMounted(() => {
         </p>
       </div>
     </header>
-    
+
     <AdminFilters
       v-model:search="search"
       :filters="filterConfig"
@@ -90,7 +90,7 @@ onMounted(() => {
       @update:filter="handleFilter"
       @reset="resetFilters"
     />
-    
+
     <AdminTable
       :columns="columns"
       :items="filteredLogs"
@@ -105,19 +105,19 @@ onMounted(() => {
           <span>{{ item.actorName || 'Система' }}</span>
         </div>
       </template>
-      
+
       <template #action="{ item }">
         <span class="admin-audit-logs__action">
           {{ actionLabels[item.action] || item.action }}
         </span>
       </template>
-      
+
       <template #entity="{ item }">
         <span class="admin-audit-logs__entity">
           {{ item.details }}
         </span>
       </template>
-      
+
       <template #createdAt="{ item }">
         <span class="admin-audit-logs__date">
           {{ formatDate(item.createdAt, 'datetime') }}

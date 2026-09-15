@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   items: {
@@ -8,13 +8,11 @@ const props = defineProps({
   },
   trigger: {
     type: String,
-    default: 'click',
-    validator: (v) => ['click', 'hover'].includes(v)
+    default: 'click'
   },
   placement: {
     type: String,
-    default: 'bottom-start',
-    validator: (v) => ['bottom-start', 'bottom-end', 'top-start', 'top-end'].includes(v)
+    default: 'bottom-start'
   },
   disabled: Boolean
 })
@@ -41,18 +39,6 @@ function handleClickOutside(event) {
   }
 }
 
-function handleMouseEnter() {
-  if (props.trigger === 'hover' && !props.disabled) {
-    isOpen.value = true
-  }
-}
-
-function handleMouseLeave() {
-  if (props.trigger === 'hover') {
-    isOpen.value = false
-  }
-}
-
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
 })
@@ -63,36 +49,32 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div 
-    ref="dropdownRef"
-    class="base-dropdown"
-    @mouseenter="handleMouseEnter"
-    @mouseleave="handleMouseLeave"
-  >
+  <div ref="dropdownRef" class="base-dropdown">
     <div @click="toggle">
       <slot name="trigger" :is-open="isOpen" />
     </div>
-    
+
     <Transition name="dropdown">
-      <div 
+      <div
         v-if="isOpen"
         :class="['base-dropdown__menu', `base-dropdown__menu--${placement}`]"
         role="menu"
       >
-        <slot :items="items" :select="selectItem">
+        <template v-for="(item, index) in items" :key="item.value || item.label || index">
+          <div v-if="item.type === 'divider'" class="base-dropdown__divider"></div>
+
           <button
-            v-for="item in items"
-            :key="item.value || item.label"
-            class="base-dropdown__item"
+            v-else
+            :class="[
+              'base-dropdown__item',
+              { 'base-dropdown__item--danger': item.danger }
+            ]"
             role="menuitem"
             @click="selectItem(item)"
           >
-            <span v-if="item.icon" class="base-dropdown__item-icon">
-              <component :is="item.icon" />
-            </span>
             <span class="base-dropdown__item-label">{{ item.label }}</span>
           </button>
-        </slot>
+        </template>
       </div>
     </Transition>
   </div>
@@ -115,25 +97,10 @@ onUnmounted(() => {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-.base-dropdown__menu--bottom-start {
-  top: calc(100% + 4px);
-  left: 0;
-}
-
-.base-dropdown__menu--bottom-end {
-  top: calc(100% + 4px);
-  right: 0;
-}
-
-.base-dropdown__menu--top-start {
-  bottom: calc(100% + 4px);
-  left: 0;
-}
-
-.base-dropdown__menu--top-end {
-  bottom: calc(100% + 4px);
-  right: 0;
-}
+.base-dropdown__menu--bottom-start { top: calc(100% + 4px); left: 0; }
+.base-dropdown__menu--bottom-end { top: calc(100% + 4px); right: 0; }
+.base-dropdown__menu--top-start { bottom: calc(100% + 4px); left: 0; }
+.base-dropdown__menu--top-end { bottom: calc(100% + 4px); right: 0; }
 
 .base-dropdown__item {
   display: flex;
@@ -143,8 +110,11 @@ onUnmounted(() => {
   padding: 10px 12px;
   font-size: 14px;
   color: #374151;
+  background: none;
+  border: none;
   border-radius: 8px;
-  transition: all 0.2s;
+  cursor: pointer;
+  transition: all 0.15s;
   text-align: left;
 }
 
@@ -153,16 +123,24 @@ onUnmounted(() => {
   color: #111827;
 }
 
-.base-dropdown__item-icon {
-  display: flex;
-  align-items: center;
-  color: #6B7280;
+.base-dropdown__item--danger {
+  color: #EF4444;
 }
 
-/* Transition */
+.base-dropdown__item--danger:hover {
+  background: #FEF2F2;
+  color: #DC2626;
+}
+
+.base-dropdown__divider {
+  height: 1px;
+  margin: 4px 0;
+  background: #F3F4F6;
+}
+
 .dropdown-enter-active,
 .dropdown-leave-active {
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .dropdown-enter-from,

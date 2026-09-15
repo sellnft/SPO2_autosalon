@@ -45,4 +45,16 @@ const sortOptions = [
   color: #6B7280;
   white-space: nowrap;
 }
+
+@media (max-width: 640px) {
+  .announcement-sort {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  .announcement-sort__label {
+    font-size: 13px;
+  }
+}
 </style>

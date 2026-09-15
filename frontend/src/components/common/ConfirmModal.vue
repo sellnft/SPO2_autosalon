@@ -35,6 +35,11 @@ defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
+
+function handleCancel() {
+  emit('cancel')
+  emit('update:modelValue', false)
+}
 </script>
 
 <template>
@@ -42,24 +47,24 @@ const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
     :model-value="modelValue"
     :title="title"
     size="sm"
-    @update:model-value="$emit('update:modelValue', $event)"
+    @update:model-value="emit('update:modelValue', $event)"
   >
     <div class="confirm-modal">
       <p class="confirm-modal__message">{{ message }}</p>
-      
+
       <div class="confirm-modal__actions">
         <BaseButton
           variant="ghost"
           :disabled="loading"
-          @click="$emit('cancel'); $emit('update:modelValue', false)"
+          @click="handleCancel"
         >
           {{ cancelText }}
         </BaseButton>
-        
+
         <BaseButton
           :variant="variant"
           :loading="loading"
-          @click="$emit('confirm')"
+          @click="emit('confirm')"
         >
           {{ confirmText }}
         </BaseButton>
@@ -80,5 +85,15 @@ const emit = defineEmits(['update:modelValue', 'confirm', 'cancel'])
   display: flex;
   justify-content: flex-end;
   gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .confirm-modal__actions {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-modal__actions > * {
+    width: 100%;
+  }
 }
 </style>

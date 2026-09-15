@@ -1,13 +1,15 @@
 <script setup>
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, computed } from 'vue'
 import { useChatStore } from '@/stores/chat'
+import { useAuthStore } from '@/stores/auth'
 import MessageItem from './MessageItem.vue'
 import BaseLoader from '@/components/common/BaseLoader.vue'
 
 const chatStore = useChatStore()
+const authStore = useAuthStore()
 const messagesContainer = ref(null)
 
-const CURRENT_USER_ID = 1 // TODO: брать из auth store
+const currentUserId = computed(() => authStore.user?.id || null)
 
 function scrollToBottom(smooth = false) {
   nextTick(() => {
@@ -27,9 +29,7 @@ watch(
 
 watch(
   () => chatStore.currentChatId,
-  () => {
-    scrollToBottom()
-  }
+  () => scrollToBottom()
 )
 
 onMounted(() => {
@@ -43,17 +43,17 @@ onMounted(() => {
       v-if="chatStore.loading && !chatStore.currentMessages.length"
       text="Загрузка сообщений..."
     />
-    
+
     <div v-else-if="!chatStore.currentMessages.length" class="message-list__empty">
       <p>Начните переписку</p>
     </div>
-    
+
     <div v-else class="message-list__messages">
       <MessageItem
         v-for="message in chatStore.currentMessages"
         :key="message.id"
         :message="message"
-        :own="message.senderId === CURRENT_USER_ID"
+        :own="message.senderId === currentUserId"
       />
     </div>
   </div>

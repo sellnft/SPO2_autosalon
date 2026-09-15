@@ -2,7 +2,7 @@
 defineProps({
   type: {
     type: String,
-    default: 'no-chats', // no-chats | no-selection | error
+    default: 'no-chats',
     validator: (v) => ['no-chats', 'no-selection', 'error'].includes(v)
   }
 })
@@ -22,7 +22,7 @@ defineEmits(['retry'])
         Перейти в каталог
       </RouterLink>
     </template>
-    
+
     <template v-else-if="type === 'no-selection'">
       <div class="chat-empty-state__icon">📨</div>
       <h3 class="chat-empty-state__title">Выберите чат</h3>
@@ -30,7 +30,7 @@ defineEmits(['retry'])
         Выберите чат из списка слева, чтобы начать общение
       </p>
     </template>
-    
+
     <template v-else>
       <div class="chat-empty-state__icon">⚠️</div>
       <h3 class="chat-empty-state__title">Ошибка загрузки</h3>

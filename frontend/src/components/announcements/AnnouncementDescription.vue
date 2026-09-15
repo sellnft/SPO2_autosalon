@@ -18,6 +18,7 @@ defineProps({
 .announcement-description {
   padding: 24px;
   background: white;
+  border: 1px solid #E5E7EB;
   border-radius: 16px;
 }
 

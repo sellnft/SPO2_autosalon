@@ -79,50 +79,48 @@ onMounted(() => {
   <div class="announcement-page">
     <div class="container">
       <Breadcrumbs />
-      
+
       <div v-if="loading" class="announcement-page__loading">
         <BaseLoader size="lg" text="Загрузка объявления..." />
       </div>
-      
+
       <ErrorMessage
         v-else-if="error"
         :message="error"
         retry
         @retry="loadAnnouncement"
       />
-      
+
       <template v-else-if="announcement">
         <div class="announcement-page__header">
           <div class="announcement-page__title-row">
             <AnnouncementInfo :announcement="announcement" />
             <AnnouncementStatus :status="announcement.status" />
           </div>
-          
+
           <div class="announcement-page__actions">
             <AnnouncementActions :announcement="announcement" />
             <AnnouncementShare :announcement-id="announcement.id" />
           </div>
         </div>
-        
+
         <div class="announcement-page__content">
           <div class="announcement-page__main">
             <AnnouncementGallery :photos="announcement.photos" />
-            
             <AnnouncementSpecs :announcement="announcement" />
-            
             <AnnouncementDescription :description="announcement.description" />
           </div>
-          
+
           <aside class="announcement-page__sidebar">
             <div class="announcement-page__price-card">
               <AnnouncementPrice :price="announcement.price" />
               <AnnouncementLocation :city="announcement.city" />
             </div>
-            
+
             <AnnouncementSeller :announcement="announcement" />
           </aside>
         </div>
-        
+
         <!-- Mobile Sticky CTA -->
         <div class="announcement-page__mobile-cta">
           <div class="announcement-page__mobile-price">
@@ -198,6 +196,7 @@ onMounted(() => {
   padding: 24px;
   background: white;
   border-radius: 16px;
+  border: 1px solid #E5E7EB;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -211,7 +210,7 @@ onMounted(() => {
   .announcement-page__content {
     grid-template-columns: 1fr;
   }
-  
+
   .announcement-page__sidebar {
     order: -1;
   }
@@ -243,7 +242,7 @@ onMounted(() => {
   .announcement-page__header {
     flex-direction: column;
   }
-  
+
   .announcement-page__actions {
     width: 100%;
     justify-content: flex-start;

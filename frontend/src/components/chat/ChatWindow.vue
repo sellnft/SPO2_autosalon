@@ -22,35 +22,32 @@ function goToAnnouncement() {
     <header class="chat-window__header">
       <button
         class="chat-window__back"
-        @click="chatStore.currentChatId = null"
         aria-label="Назад"
+        @click="chatStore.currentChatId = null"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
           <path d="M12 5l-5 5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </button>
-      
+
       <div class="chat-window__avatar">
         {{ (chat.sellerName || chat.buyerName)?.charAt(0) }}
       </div>
-      
+
       <div class="chat-window__info">
         <p class="chat-window__name">
           {{ chat.sellerName || chat.buyerName }}
         </p>
-        <button
-          class="chat-window__announcement"
-          @click="goToAnnouncement"
-        >
+        <button class="chat-window__announcement" @click="goToAnnouncement">
           {{ chat.announcementTitle }}
         </button>
       </div>
     </header>
-    
+
     <MessageList />
     <MessageInput />
   </div>
-  
+
   <div v-else class="chat-window chat-window--empty">
     <div class="chat-window__empty-content">
       <svg width="80" height="80" viewBox="0 0 24 24" fill="none">

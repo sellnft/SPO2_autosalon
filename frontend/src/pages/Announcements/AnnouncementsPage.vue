@@ -11,6 +11,7 @@ import BasePagination from '@/components/common/BasePagination.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import ErrorMessage from '@/components/common/ErrorMessage.vue'
+import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,6 +21,8 @@ const isFilterMobileOpen = ref(false)
 const loading = ref(true)
 const error = ref(null)
 
+let isInitializing = false
+
 const activeFilters = computed(() => {
   const filters = []
   const filterMap = {
@@ -28,9 +31,10 @@ const activeFilters = computed(() => {
     bodyType: 'Кузов',
     transmission: 'КПП',
     drive: 'Привод',
+    color: 'Цвет',
     city: 'Город'
   }
-  
+
   Object.keys(filterMap).forEach(key => {
     if (announcementsStore.filters[key]) {
       filters.push({
@@ -40,7 +44,7 @@ const activeFilters = computed(() => {
       })
     }
   })
-  
+
   if (announcementsStore.filters.priceFrom) {
     filters.push({ key: 'priceFrom', label: 'Цена от', value: announcementsStore.filters.priceFrom })
   }
@@ -53,12 +57,13 @@ const activeFilters = computed(() => {
   if (announcementsStore.filters.yearTo) {
     filters.push({ key: 'yearTo', label: 'Год до', value: announcementsStore.filters.yearTo })
   }
-  
+
   return filters
 })
 
 function updateFilters(newFilters) {
   announcementsStore.updateFilters(newFilters)
+  announcementsStore.updateFilters({ page: 1 })
   updateQueryParams()
   loadAnnouncements()
 }
@@ -78,21 +83,20 @@ function removeFilter(key) {
 function updateQueryParams() {
   const query = {}
   const filters = announcementsStore.filters
-  
+
   Object.keys(filters).forEach(key => {
-    if (filters[key] && key !== 'page' && key !== 'perPage' && key !== 'sortBy' && key !== 'sortOrder') {
+    if (
+      filters[key] &&
+      key !== 'page' &&
+      key !== 'perPage' &&
+      key !== 'sortBy' &&
+      key !== 'sortOrder'
+    ) {
       query[key] = filters[key]
     }
   })
-  
-  router.replace({ path: '/announcements', query })
-}
 
-function loadFromQuery() {
-  const query = route.query
-  if (Object.keys(query).length) {
-    announcementsStore.updateFilters(query)
-  }
+  router.replace({ path: '/announcements', query })
 }
 
 async function loadAnnouncements() {
@@ -103,7 +107,8 @@ async function loadAnnouncements() {
   } catch (err) {
     error.value = err.message
   } finally {
-    loading.value = false  }
+    loading.value = false
+  }
 }
 
 function handleSortChange(sortValue) {
@@ -116,27 +121,44 @@ function handlePageChange(page) {
   loadAnnouncements()
 }
 
-onMounted(() => {
-  loadFromQuery()
-  loadAnnouncements()
-})
+watch(
+  () => route.query,
+  (newQuery) => {
+    if (isInitializing) return
 
-watch(() => route.query, () => {
-  loadFromQuery()
-  loadAnnouncements()
+    // Загружаем параметры из URL
+    if (Object.keys(newQuery).length) {
+      announcementsStore.updateFilters(newQuery)
+    }
+    loadAnnouncements()
+  }
+)
+
+onMounted(() => {
+  isInitializing = true
+
+  if (Object.keys(route.query).length) {
+    announcementsStore.updateFilters(route.query)
+  }
+
+  loadAnnouncements().then(() => {
+    isInitializing = false
+  })
 })
 </script>
 
 <template>
   <div class="announcements-page">
     <div class="container">
+      <Breadcrumbs />
+
       <div class="announcements-page__header">
         <h1 class="announcements-page__title">Каталог автомобилей</h1>
         <p class="announcements-page__count">
           Найдено: {{ announcementsStore.totalItems }}
         </p>
       </div>
-      
+
       <div class="announcements-page__mobile-filter">
         <BaseButton variant="outline" block @click="isFilterMobileOpen = true">
           <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -148,7 +170,7 @@ watch(() => route.query, () => {
           </span>
         </BaseButton>
       </div>
-      
+
       <div v-if="activeFilters.length" class="announcements-page__active-filters">
         <button
           v-for="filter in activeFilters"
@@ -161,19 +183,19 @@ watch(() => route.query, () => {
             <path d="M4 4l6 6M10 4l-6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           </svg>
         </button>
-        
+
         <button class="active-filter__reset" @click="resetFilters">
           Сбросить все
         </button>
       </div>
-      
+
       <div class="announcements-page__sort">
         <AnnouncementSort
           :model-value="`${announcementsStore.filters.sortBy}-${announcementsStore.filters.sortOrder}`"
           @update:model-value="handleSortChange"
         />
       </div>
-      
+
       <div class="announcements-page__content">
         <aside class="announcements-page__sidebar">
           <AnnouncementFilters
@@ -182,29 +204,29 @@ watch(() => route.query, () => {
             @reset="resetFilters"
           />
         </aside>
-        
+
         <div class="announcements-page__results">
           <div v-if="loading" class="announcements-page__grid">
             <AnnouncementSkeleton v-for="i in 6" :key="i" />
           </div>
-          
+
           <ErrorMessage
             v-else-if="error"
             :message="error"
             retry
             @retry="loadAnnouncements"
           />
-          
+
           <EmptyState
             v-else-if="!announcementsStore.announcements.length"
             icon="search"
             title="Ничего не найдено"
             description="Попробуйте изменить параметры поиска"
           />
-          
+
           <template v-else>
             <AnnouncementGrid :announcements="announcementsStore.announcements" />
-            
+
             <BasePagination
               :current-page="announcementsStore.filters.page"
               :total-items="announcementsStore.totalItems"
@@ -215,7 +237,7 @@ watch(() => route.query, () => {
         </div>
       </div>
     </div>
-    
+
     <AnnouncementFilterMobile
       v-model="isFilterMobileOpen"
       :filters="announcementsStore.filters"
@@ -227,7 +249,7 @@ watch(() => route.query, () => {
 
 <style scoped>
 .announcements-page {
-  padding: 40px 0;
+  padding: 20px 0 40px;
   min-height: 100vh;
 }
 
@@ -343,17 +365,17 @@ watch(() => route.query, () => {
 
 @media (max-width: 1024px) {
   .announcements-page {
-    padding: 20px 0;
+    padding: 16px 0;
   }
 
   .announcements-page__sidebar {
     display: none;
   }
-  
+
   .announcements-page__mobile-filter {
     display: block;
   }
-  
+
   .announcements-page__content {
     grid-template-columns: 1fr;
   }
@@ -367,7 +389,7 @@ watch(() => route.query, () => {
   .announcements-page__grid {
     grid-template-columns: 1fr;
   }
-  
+
   .announcements-page__sort {
     justify-content: flex-start;
   }

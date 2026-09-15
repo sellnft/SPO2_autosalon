@@ -64,18 +64,17 @@ onMounted(loadFeedback)
   <div class="feedback-details-page">
     <div class="container">
       <Breadcrumbs />
-      
+
       <BaseLoader v-if="loading" text="Загрузка обращения..." />
-      
+
       <ErrorMessage
         v-else-if="error"
         :message="error"
         retry
         @retry="loadFeedback"
       />
-      
+
       <template v-else-if="feedback">
-        <!-- Header -->
         <div class="feedback-details__header">
           <div>
             <div class="feedback-details__meta">
@@ -95,8 +94,7 @@ onMounted(loadFeedback)
             </p>
           </div>
         </div>
-        
-        <!-- Chat -->
+
         <FeedbackChat :feedback="feedback" />
       </template>
     </div>
@@ -122,6 +120,7 @@ onMounted(loadFeedback)
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 
 .feedback-details__id {
@@ -186,7 +185,7 @@ onMounted(loadFeedback)
   .feedback-details__meta {
     flex-wrap: wrap;
   }
-  
+
   .feedback-details__title {
     font-size: 20px;
   }

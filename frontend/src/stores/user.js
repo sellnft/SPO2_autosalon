@@ -7,9 +7,9 @@ export const useUserStore = defineStore('user', () => {
   const sessions = ref([])
   const loading = ref(false)
   const error = ref(null)
-  
+
   const isProfileLoaded = computed(() => !!profile.value)
-  
+
   async function fetchProfile(userId) {
     loading.value = true
     error.value = null
@@ -23,7 +23,7 @@ export const useUserStore = defineStore('user', () => {
       loading.value = false
     }
   }
-  
+
   async function updateProfile(userData) {
     loading.value = true
     error.value = null
@@ -37,9 +37,10 @@ export const useUserStore = defineStore('user', () => {
       loading.value = false
     }
   }
-  
+
   async function fetchSessions() {
     loading.value = true
+    error.value = null
     try {
       sessions.value = await usersApi.getSessions()
       return sessions.value
@@ -50,7 +51,7 @@ export const useUserStore = defineStore('user', () => {
       loading.value = false
     }
   }
-  
+
   async function revokeSession(sessionId) {
     try {
       await usersApi.revokeSession(sessionId)
@@ -60,7 +61,13 @@ export const useUserStore = defineStore('user', () => {
       throw err
     }
   }
-  
+
+  function reset() {
+    profile.value = null
+    sessions.value = []
+    error.value = null
+  }
+
   return {
     profile,
     sessions,
@@ -70,6 +77,7 @@ export const useUserStore = defineStore('user', () => {
     fetchProfile,
     updateProfile,
     fetchSessions,
-    revokeSession
+    revokeSession,
+    reset
   }
 })

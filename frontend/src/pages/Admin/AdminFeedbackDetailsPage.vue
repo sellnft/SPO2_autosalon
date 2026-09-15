@@ -2,7 +2,6 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '@/stores/admin'
-import { useFeedbackStore } from '@/stores/feedback'
 import { useToastStore } from '@/stores/toast'
 import { formatDate } from '@/utils/formatDate'
 import AdminStatusBadge from '@/components/admin/AdminStatusBadge.vue'
@@ -11,13 +10,12 @@ import BaseButton from '@/components/common/BaseButton.vue'
 const route = useRoute()
 const router = useRouter()
 const adminStore = useAdminStore()
-const feedbackStore = useFeedbackStore()
 const toastStore = useToastStore()
 
 const reply = ref('')
 const sending = ref(false)
 
-const feedback = computed(() => 
+const feedback = computed(() =>
   adminStore.feedback.find(f => f.id === Number(route.params.id))
 )
 
@@ -31,9 +29,8 @@ const statuses = [
 
 async function updateStatus(status) {
   if (!feedback.value) return
-  
+
   try {
-    // TODO: При реальном backend - вызывать API
     feedback.value.status = status
     toastStore.success('Статус обновлён')
   } catch (err) {
@@ -43,10 +40,9 @@ async function updateStatus(status) {
 
 async function sendReply() {
   if (!reply.value.trim() || sending.value) return
-  
+
   sending.value = true
   try {
-    // TODO: При реальном backend - вызывать admin API для ответа
     feedback.value.messages.push({
       id: Date.now(),
       feedbackId: feedback.value.id,
@@ -57,7 +53,7 @@ async function sendReply() {
       createdAt: new Date().toISOString(),
       read: false
     })
-    
+
     feedback.value.updatedAt = new Date().toISOString()
     feedback.value.status = 'waiting_user'
     reply.value = ''
@@ -84,13 +80,12 @@ onMounted(async () => {
       </svg>
       К обращениям
     </button>
-    
+
     <div v-if="!feedback" class="admin-feedback-details__loading">
       Загрузка...
     </div>
-    
+
     <template v-else>
-      <!-- Header -->
       <div class="admin-feedback-details__header">
         <div class="admin-feedback-details__header-top">
           <div>
@@ -104,8 +99,7 @@ onMounted(async () => {
             </p>
           </div>
         </div>
-        
-        <!-- Status Changer -->
+
         <div class="admin-feedback-details__status-changer">
           <span class="admin-feedback-details__status-label">Статус:</span>
           <button
@@ -121,8 +115,7 @@ onMounted(async () => {
           </button>
         </div>
       </div>
-      
-      <!-- Messages -->
+
       <div class="admin-feedback-details__chat">
         <div class="admin-feedback-details__messages">
           <div
@@ -149,7 +142,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        
+
         <div v-if="feedback.status !== 'closed'" class="admin-feedback-details__reply">
           <textarea
             v-model="reply"

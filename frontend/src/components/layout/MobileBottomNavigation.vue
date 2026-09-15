@@ -11,7 +11,7 @@ const navItems = computed(() => {
     { label: 'Главная', to: '/', icon: 'home' },
     { label: 'Каталог', to: '/announcements', icon: 'search' }
   ]
-  
+
   if (authStore.isAuthenticated) {
     items.push(
       { label: 'Избранное', to: '/favourites', icon: 'heart' },
@@ -24,7 +24,7 @@ const navItems = computed(() => {
       { label: 'Регистрация', to: '/register', icon: 'user-plus' }
     )
   }
-  
+
   return items
 })
 
@@ -67,7 +67,7 @@ function isActive(path) {
       <svg v-else width="22" height="22" viewBox="0 0 24 24" fill="none">
         <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M8.5 11a4 4 0 100-8 4 4 0 000 8zM20 8v6M23 11h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      
+
       <span class="mobile-bottom-nav__label">{{ item.label }}</span>
     </RouterLink>
   </nav>

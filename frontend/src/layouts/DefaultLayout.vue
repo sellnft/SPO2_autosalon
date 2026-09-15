@@ -8,11 +8,11 @@ import ToastContainer from '@/components/common/ToastContainer.vue'
 <template>
   <div class="default-layout">
     <AppHeader />
-    
+
     <main class="default-layout__main">
       <router-view />
     </main>
-    
+
     <AppFooter />
     <MobileBottomNavigation />
     <ToastContainer />

@@ -68,6 +68,7 @@ function handleChange() {
   position: relative;
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
   background: white;
   border: 2px solid #D1D5DB;
   border-radius: 50%;

@@ -34,6 +34,7 @@ function update(key, value) {
       <button
         v-for="city in cities"
         :key="city"
+        type="button"
         :class="['step__city', { 'step__city--active': modelValue.city === city }]"
         @click="update('city', city)"
       >

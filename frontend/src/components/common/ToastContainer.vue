@@ -13,10 +13,7 @@ const toasts = computed(() => toastStore.toasts)
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        :class="[
-          'toast',
-          `toast--${toast.type}`
-        ]"
+        :class="['toast', `toast--${toast.type}`]"
         role="alert"
       >
         <div class="toast__icon">
@@ -35,16 +32,16 @@ const toasts = computed(() => toastStore.toasts)
             <circle cx="10" cy="6" r="1" fill="currentColor"/>
           </svg>
         </div>
-        
+
         <div class="toast__content">
           <p v-if="toast.title" class="toast__title">{{ toast.title }}</p>
           <p class="toast__message">{{ toast.message }}</p>
         </div>
-        
+
         <button
           class="toast__close"
+          aria-label="Закрыть"
           @click="toastStore.remove(toast.id)"
-          aria-label="Close"
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -80,21 +77,10 @@ const toasts = computed(() => toastStore.toasts)
   pointer-events: auto;
 }
 
-.toast--success {
-  border-left: 4px solid #10B981;
-}
-
-.toast--error {
-  border-left: 4px solid #EF4444;
-}
-
-.toast--warning {
-  border-left: 4px solid #F59E0B;
-}
-
-.toast--info {
-  border-left: 4px solid #0A84FF;
-}
+.toast--success { border-left: 4px solid #10B981; }
+.toast--error { border-left: 4px solid #EF4444; }
+.toast--warning { border-left: 4px solid #F59E0B; }
+.toast--info { border-left: 4px solid #0A84FF; }
 
 .toast__icon {
   flex-shrink: 0;
@@ -128,6 +114,7 @@ const toasts = computed(() => toastStore.toasts)
 
 .toast__content {
   flex: 1;
+  min-width: 0;
 }
 
 .toast__title {
@@ -149,8 +136,12 @@ const toasts = computed(() => toastStore.toasts)
   justify-content: center;
   width: 24px;
   height: 24px;
+  flex-shrink: 0;
   color: #9CA3AF;
+  background: none;
+  border: none;
   border-radius: 6px;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -159,7 +150,6 @@ const toasts = computed(() => toastStore.toasts)
   color: #111827;
 }
 
-/* Transitions */
 .toast-enter-active,
 .toast-leave-active {
   transition: all 0.3s ease;

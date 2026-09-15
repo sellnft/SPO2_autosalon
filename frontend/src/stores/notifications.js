@@ -7,11 +7,13 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const unreadCount = ref(0)
   const loading = ref(false)
   const error = ref(null)
-  
+
   const hasUnread = computed(() => unreadCount.value > 0)
-  
+  const recentNotifications = computed(() => notifications.value.slice(0, 5))
+
   async function fetchNotifications() {
     loading.value = true
+    error.value = null
     try {
       notifications.value = await notificationsApi.getNotifications()
       unreadCount.value = notifications.value.filter(n => !n.read).length
@@ -23,32 +25,32 @@ export const useNotificationsStore = defineStore('notifications', () => {
       loading.value = false
     }
   }
-  
+
   async function markAsRead(notificationId) {
     try {
       await notificationsApi.markAsRead(notificationId)
-      const notification = notifications.value.find(n => n.id === notificationId)
+      const notification = notifications.value.find(n => n.id === Number(notificationId))
       if (notification && !notification.read) {
         notification.read = true
-        unreadCount.value--
+        unreadCount.value = Math.max(0, unreadCount.value - 1)
       }
     } catch (err) {
       error.value = err.message
       throw err
     }
   }
-  
+
   async function markAllAsRead() {
     try {
       await notificationsApi.markAllAsRead()
-      notifications.value.forEach(n => n.read = true)
+      notifications.value.forEach(n => (n.read = true))
       unreadCount.value = 0
     } catch (err) {
       error.value = err.message
       throw err
     }
   }
-  
+
   async function updateNotificationSettings(settings) {
     try {
       return await notificationsApi.updateSettings(settings)
@@ -57,16 +59,24 @@ export const useNotificationsStore = defineStore('notifications', () => {
       throw err
     }
   }
-  
+
+  function reset() {
+    notifications.value = []
+    unreadCount.value = 0
+    error.value = null
+  }
+
   return {
     notifications,
     unreadCount,
     loading,
     error,
     hasUnread,
+    recentNotifications,
     fetchNotifications,
     markAsRead,
     markAllAsRead,
-    updateNotificationSettings
+    updateNotificationSettings,
+    reset
   }
 })

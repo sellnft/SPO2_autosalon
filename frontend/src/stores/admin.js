@@ -13,13 +13,11 @@ export const useAdminStore = defineStore('admin', () => {
 
   const totalUsers = computed(() => users.value.length)
   const totalAnnouncements = computed(() => announcements.value.length)
-
-  const pendingAnnouncements = computed(() => 
+  const pendingAnnouncements = computed(() =>
     announcements.value.filter(a => a.status === 'pending')
   )
-
   const openFeedback = computed(() =>
-    feedback.value.filter(f => 
+    feedback.value.filter(f =>
       ['open', 'in_progress', 'waiting_user'].includes(f.status)
     )
   )
@@ -66,21 +64,39 @@ export const useAdminStore = defineStore('admin', () => {
   async function moderateAnnouncement(id, action) {
     try {
       const result = await adminApi.moderateAnnouncement(id, action)
-      
-      // Обновляем локально
       const index = announcements.value.findIndex(a => a.id === Number(id))
-      if (index !== -1) {
-        const newStatus = action === 'approve' ? 'active' 
-          : action === 'reject' ? 'rejected' 
-          : action === 'block' ? 'blocked' 
-          : announcements.value[index].status
-        announcements.value[index] = { 
-          ...announcements.value[index], 
-          status: newStatus 
-        }
+      if (index !== -1 && result) {
+        announcements.value[index] = { ...announcements.value[index], ...result }
       }
-      
       return result
+    } catch (err) {
+      error.value = err.message
+      throw err
+    }
+  }
+
+  async function blockUser(id) {
+    try {
+      const updated = await adminApi.blockUser(id)
+      const index = users.value.findIndex(u => u.id === Number(id))
+      if (index !== -1 && updated) {
+        users.value[index] = { ...users.value[index], ...updated }
+      }
+      return updated
+    } catch (err) {
+      error.value = err.message
+      throw err
+    }
+  }
+
+  async function unblockUser(id) {
+    try {
+      const updated = await adminApi.unblockUser(id)
+      const index = users.value.findIndex(u => u.id === Number(id))
+      if (index !== -1 && updated) {
+        users.value[index] = { ...users.value[index], ...updated }
+      }
+      return updated
     } catch (err) {
       error.value = err.message
       throw err
@@ -113,6 +129,15 @@ export const useAdminStore = defineStore('admin', () => {
     }
   }
 
+  function reset() {
+    users.value = []
+    announcements.value = []
+    feedback.value = []
+    auditLogs.value = []
+    dashboardStats.value = null
+    error.value = null
+  }
+
   return {
     users,
     announcements,
@@ -129,7 +154,10 @@ export const useAdminStore = defineStore('admin', () => {
     fetchUsers,
     fetchAnnouncements,
     moderateAnnouncement,
+    blockUser,
+    unblockUser,
     fetchFeedback,
-    fetchAuditLogs
+    fetchAuditLogs,
+    reset
   }
 })

@@ -16,7 +16,7 @@ const props = defineProps({
 const router = useRouter()
 const favouritesStore = useFavouritesStore()
 
-const isFavourite = computed(() => 
+const isFavourite = computed(() =>
   favouritesStore.isFavourite(props.announcement.id)
 )
 
@@ -43,12 +43,13 @@ function handleClick() {
         width="400"
         height="300"
       />
-      
+
       <FavouriteButton
         :announcement-id="announcement.id"
+        :is-favourite="isFavourite"
         class="announcement-card__favourite"
       />
-      
+
       <span
         v-if="announcement.status === 'pending'"
         class="announcement-card__status"
@@ -56,16 +57,16 @@ function handleClick() {
         На модерации
       </span>
     </div>
-    
+
     <div class="announcement-card__content">
       <h3 class="announcement-card__title">
         {{ announcement.brand }} {{ announcement.model }}
       </h3>
-      
+
       <p class="announcement-card__price">
         {{ formatPrice(announcement.price) }}
       </p>
-      
+
       <div class="announcement-card__specs">
         <span>{{ announcement.year }}</span>
         <span class="announcement-card__dot">•</span>
@@ -73,7 +74,7 @@ function handleClick() {
         <span class="announcement-card__dot">•</span>
         <span>{{ announcement.transmission }}</span>
       </div>
-      
+
       <div class="announcement-card__footer">
         <span class="announcement-card__location">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
@@ -82,7 +83,7 @@ function handleClick() {
           </svg>
           {{ announcement.city }}
         </span>
-        
+
         <span class="announcement-card__views">
           <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
             <path d="M1 7s2.5-4 6-4 6 4 6 4-2.5 4-6 4-6-4-6-4z" stroke="currentColor" stroke-width="1.5"/>
@@ -219,7 +220,7 @@ function handleClick() {
   .announcement-card__title {
     font-size: 16px;
   }
-  
+
   .announcement-card__price {
     font-size: 18px;
   }

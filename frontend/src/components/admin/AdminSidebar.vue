@@ -1,5 +1,4 @@
 <script setup>
-import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 defineProps({
@@ -12,31 +11,11 @@ defineProps({
 const route = useRoute()
 
 const menuItems = [
-  {
-    label: 'Обзор',
-    to: '/admin',
-    icon: 'dashboard'
-  },
-  {
-    label: 'Пользователи',
-    to: '/admin/users',
-    icon: 'users'
-  },
-  {
-    label: 'Объявления',
-    to: '/admin/announcements',
-    icon: 'car'
-  },
-  {
-    label: 'Обращения',
-    to: '/admin/feedback',
-    icon: 'chat'
-  },
-  {
-    label: 'Журнал действий',
-    to: '/admin/audit-logs',
-    icon: 'list'
-  }
+  { label: 'Обзор', to: '/admin', icon: 'dashboard' },
+  { label: 'Пользователи', to: '/admin/users', icon: 'users' },
+  { label: 'Объявления', to: '/admin/announcements', icon: 'car' },
+  { label: 'Обращения', to: '/admin/feedback', icon: 'chat' },
+  { label: 'Журнал действий', to: '/admin/audit-logs', icon: 'list' }
 ]
 
 function isActive(path) {
@@ -53,7 +32,7 @@ function isActive(path) {
         <span class="admin-sidebar__logo-text">Admin</span>
       </RouterLink>
     </div>
-    
+
     <nav class="admin-sidebar__nav">
       <RouterLink
         v-for="item in menuItems"
@@ -87,7 +66,7 @@ function isActive(path) {
         <span class="admin-sidebar__label">{{ item.label }}</span>
       </RouterLink>
     </nav>
-    
+
     <div class="admin-sidebar__footer">
       <RouterLink to="/" class="admin-sidebar__back">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -235,7 +214,6 @@ function isActive(path) {
     left: 0;
     bottom: 0;
     z-index: 50;
-    transform: translateX(0);
   }
 
   .admin-sidebar--closed {

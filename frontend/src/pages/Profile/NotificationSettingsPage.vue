@@ -56,22 +56,26 @@ async function handleSave() {
     saving.value = false
   }
 }
+
+onMounted(() => {
+  // Можно загрузить с сервера — в mock используется defaults
+})
 </script>
 
 <template>
   <div class="notification-settings-page">
     <div class="container">
       <Breadcrumbs />
-      
+
       <h1 class="notification-settings-page__title">Настройки уведомлений</h1>
-      
+
       <div class="notification-settings-page__sections">
         <!-- Email -->
         <section class="notification-settings-page__section">
           <h2 class="notification-settings-page__section-title">
             Email уведомления
           </h2>
-          
+
           <div
             v-for="setting in emailSettings"
             :key="`email-${setting.key}`"
@@ -86,13 +90,13 @@ async function handleSave() {
             <BaseSwitch v-model="settings.email[setting.key]" />
           </div>
         </section>
-        
+
         <!-- Push -->
         <section class="notification-settings-page__section">
           <h2 class="notification-settings-page__section-title">
             Push уведомления
           </h2>
-          
+
           <div
             v-for="setting in emailSettings"
             :key="`push-${setting.key}`"
@@ -107,7 +111,7 @@ async function handleSave() {
             <BaseSwitch v-model="settings.push[setting.key]" />
           </div>
         </section>
-        
+
         <div class="notification-settings-page__actions">
           <BaseButton :loading="saving" size="lg" @click="handleSave">
             Сохранить настройки
@@ -127,6 +131,7 @@ async function handleSave() {
   margin-bottom: 32px;
   font-size: 32px;
   font-weight: 700;
+  color: #111827;
 }
 
 .notification-settings-page__sections {
@@ -147,6 +152,7 @@ async function handleSave() {
   margin-bottom: 20px;
   font-size: 20px;
   font-weight: 600;
+  color: #111827;
 }
 
 .notification-settings-page__item {
@@ -181,5 +187,11 @@ async function handleSave() {
 .notification-settings-page__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .notification-settings-page__title {
+    font-size: 24px;
+  }
 }
 </style>

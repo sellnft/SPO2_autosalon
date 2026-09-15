@@ -27,8 +27,7 @@ onMounted(() => {
   <div class="feedback-page">
     <div class="container">
       <Breadcrumbs />
-      
-      <!-- Hero -->
+
       <div class="feedback-page__hero">
         <div>
           <h1 class="feedback-page__title">Служба поддержки</h1>
@@ -36,7 +35,7 @@ onMounted(() => {
             Поможем с любым вопросом — от технических проблем до предложений
           </p>
         </div>
-        
+
         <BaseButton size="lg" @click="showCreateModal = true">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -44,8 +43,7 @@ onMounted(() => {
           Создать обращение
         </BaseButton>
       </div>
-      
-      <!-- Stats -->
+
       <div class="feedback-page__stats">
         <div class="feedback-page__stat">
           <span class="feedback-page__stat-value">{{ feedbackStore.feedback.length }}</span>
@@ -60,12 +58,10 @@ onMounted(() => {
           <span class="feedback-page__stat-label">Непрочитанных</span>
         </div>
       </div>
-      
-      <!-- List -->
+
       <FeedbackList @create="showCreateModal = true" />
     </div>
-    
-    <!-- Create Modal -->
+
     <BaseModal
       v-model="showCreateModal"
       title="Новое обращение"
@@ -143,11 +139,11 @@ onMounted(() => {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .feedback-page__title {
     font-size: 24px;
   }
-  
+
   .feedback-page__stats {
     grid-template-columns: 1fr;
   }

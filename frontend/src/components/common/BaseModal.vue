@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -60,7 +60,7 @@ onUnmounted(() => {
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="modelValue" class="base-modal-overlay" @click="handleOverlayClick">
-        <div 
+        <div
           ref="modalRef"
           :class="['base-modal', `base-modal--${size}`]"
           role="dialog"
@@ -68,17 +68,17 @@ onUnmounted(() => {
         >
           <div class="base-modal__header">
             <h3 class="base-modal__title">{{ title }}</h3>
-            <button class="base-modal__close" @click="close" aria-label="Close">
+            <button class="base-modal__close" aria-label="Закрыть" @click="close">
               <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                 <path d="M5 5L15 15M15 5L5 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
               </svg>
             </button>
           </div>
-          
+
           <div class="base-modal__body">
             <slot />
           </div>
-          
+
           <div v-if="$slots.footer" class="base-modal__footer">
             <slot name="footer" />
           </div>
@@ -111,21 +111,10 @@ onUnmounted(() => {
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
-.base-modal--sm {
-  max-width: 400px;
-}
-
-.base-modal--md {
-  max-width: 600px;
-}
-
-.base-modal--lg {
-  max-width: 800px;
-}
-
-.base-modal--xl {
-  max-width: 1100px;
-}
+.base-modal--sm { max-width: 400px; }
+.base-modal--md { max-width: 600px; }
+.base-modal--lg { max-width: 800px; }
+.base-modal--xl { max-width: 1100px; }
 
 .base-modal__header {
   display: flex;
@@ -147,8 +136,11 @@ onUnmounted(() => {
   justify-content: center;
   width: 32px;
   height: 32px;
-  border-radius: 8px;
   color: #6B7280;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
   transition: all 0.2s;
 }
 
@@ -172,7 +164,6 @@ onUnmounted(() => {
   border-top: 1px solid #E5E7EB;
 }
 
-/* Transitions */
 .modal-enter-active,
 .modal-leave-active {
   transition: opacity 0.3s ease;
@@ -198,11 +189,15 @@ onUnmounted(() => {
     padding: 0;
     align-items: flex-end;
   }
-  
+
   .base-modal {
     max-width: 100%;
     max-height: 95vh;
     border-radius: 16px 16px 0 0;
+  }
+
+  .base-modal__body {
+    padding: 20px;
   }
 }
 </style>

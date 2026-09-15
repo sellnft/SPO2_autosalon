@@ -68,7 +68,7 @@ function update(key, value) {
         required
         @update:model-value="update('mileage', $event)"
       />
-      
+
       <BaseSelect
         :model-value="modelValue.engineType"
         :options="engineTypes"
@@ -77,7 +77,7 @@ function update(key, value) {
         required
         @update:model-value="update('engineType', $event)"
       />
-      
+
       <BaseInput
         :model-value="modelValue.engineVolume"
         label="Объём, л"
@@ -86,7 +86,7 @@ function update(key, value) {
         placeholder="2.0"
         @update:model-value="update('engineVolume', $event)"
       />
-      
+
       <BaseInput
         :model-value="modelValue.power"
         label="Мощность, л.с."
@@ -94,7 +94,7 @@ function update(key, value) {
         placeholder="200"
         @update:model-value="update('power', $event)"
       />
-      
+
       <BaseSelect
         :model-value="modelValue.transmission"
         :options="transmissions"
@@ -103,7 +103,7 @@ function update(key, value) {
         required
         @update:model-value="update('transmission', $event)"
       />
-      
+
       <BaseSelect
         :model-value="modelValue.drive"
         :options="drives"
@@ -112,7 +112,7 @@ function update(key, value) {
         required
         @update:model-value="update('drive', $event)"
       />
-      
+
       <BaseSelect
         :model-value="modelValue.bodyType"
         :options="bodyTypes"
@@ -121,7 +121,7 @@ function update(key, value) {
         required
         @update:model-value="update('bodyType', $event)"
       />
-      
+
       <BaseSelect
         :model-value="modelValue.color"
         :options="colors"

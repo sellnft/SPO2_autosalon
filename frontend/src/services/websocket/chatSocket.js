@@ -1,51 +1,89 @@
-// TODO: При реальном backend - заменить на реальное WebSocket подключение
 import config from '@/config'
+import { tokenStorage } from '@/services/storage/tokenStorage'
 
 class ChatSocket {
   constructor() {
     this.socket = null
     this.messageHandlers = []
     this.connected = false
+    this.reconnectAttempts = 0
+    this.maxReconnectAttempts = 5
+    this.reconnectDelay = 3000
+    this.shouldReconnect = true
   }
-  
+
   connect() {
     if (this.connected) return
-    
+
     if (config.api.useMock) {
       console.log('[Mock WS] Connected')
       this.connected = true
       return
     }
-    
-    // TODO: При реальном backend
-    // const token = tokenStorage.getAccessToken()
-    // this.socket = new WebSocket(`${config.api.wsURL}/chat?token=${token}`)
-    // this.socket.onopen = () => { this.connected = true }
-    // this.socket.onmessage = (event) => {
-    //   const message = JSON.parse(event.data)
-    //   this.emitMessage(message)
-    // }
-    // this.socket.onclose = () => { this.connected = false }
+
+    try {
+      const token = tokenStorage.getAccessToken()
+      if (!token) {
+        console.warn('[WS] No token, skipping connection')
+        return
+      }
+
+      this.socket = new WebSocket(`${config.api.wsURL}/chat?token=${token}`)
+
+      this.socket.onopen = () => {
+        console.log('[WS] Connected')
+        this.connected = true
+        this.reconnectAttempts = 0
+      }
+
+      this.socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data)
+          this.emitMessage(message)
+        } catch (err) {
+          console.error('[WS] Failed to parse message:', err)
+        }
+      }
+
+      this.socket.onerror = (error) => {
+        console.error('[WS] Error:', error)
+      }
+
+      this.socket.onclose = (event) => {
+        console.log('[WS] Closed:', event.code, event.reason)
+        this.connected = false
+        this.socket = null
+
+        if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
+          this.reconnectAttempts++
+          setTimeout(() => this.connect(), this.reconnectDelay)
+        }
+      }
+    } catch (err) {
+      console.error('[WS] Connection failed:', err)
+    }
   }
-  
+
   disconnect() {
+    this.shouldReconnect = false
     if (this.socket) {
       this.socket.close()
       this.socket = null
     }
     this.connected = false
+    this.reconnectAttempts = 0
   }
-  
+
   onMessage(handler) {
     if (!this.messageHandlers.includes(handler)) {
       this.messageHandlers.push(handler)
     }
   }
-  
+
   offMessage(handler) {
     this.messageHandlers = this.messageHandlers.filter(h => h !== handler)
   }
-  
+
   emitMessage(message) {
     this.messageHandlers.forEach(h => {
       try {
@@ -55,7 +93,7 @@ class ChatSocket {
       }
     })
   }
-  
+
   sendMessage(chatId, content) {
     if (config.api.useMock) {
       const message = {
@@ -67,8 +105,7 @@ class ChatSocket {
         read: false,
         status: 'sent'
       }
-      
-      // Имитация ответа собеседника
+
       setTimeout(() => {
         const response = {
           id: Date.now() + 1,
@@ -81,12 +118,17 @@ class ChatSocket {
         }
         this.emitMessage(response)
       }, 2000 + Math.random() * 2000)
-      
+
       return message
     }
-    // this.socket.send(JSON.stringify({ chatId, content }))
+
+    if (this.socket && this.connected) {
+      this.socket.send(JSON.stringify({ chatId, content }))
+    } else {
+      console.warn('[WS] Not connected, message dropped')
+    }
   }
-  
+
   getAutoResponse() {
     const responses = [
       'Здравствуйте! Да, автомобиль ещё продаётся.',

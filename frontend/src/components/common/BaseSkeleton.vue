@@ -1,5 +1,5 @@
 <script setup>
-const props = defineProps({
+defineProps({
   variant: {
     type: String,
     default: 'text',
@@ -42,6 +42,7 @@ const props = defineProps({
 
 .base-skeleton--text {
   border-radius: 4px;
+  height: 16px;
 }
 
 .base-skeleton--circular {
@@ -79,20 +80,12 @@ const props = defineProps({
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 @keyframes skeleton-wave {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 </style>

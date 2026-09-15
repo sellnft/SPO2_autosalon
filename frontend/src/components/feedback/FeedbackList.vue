@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useFeedbackStore } from '@/stores/feedback'
 import FeedbackItem from './FeedbackItem.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
@@ -30,6 +30,12 @@ function getFilterCount(value) {
   if (value === 'all') return feedbackStore.feedback.length
   return feedbackStore.feedback.filter(f => f.status === value).length
 }
+
+onMounted(() => {
+  if (!feedbackStore.feedback.length) {
+    feedbackStore.fetchFeedback()
+  }
+})
 </script>
 
 <template>
@@ -50,19 +56,19 @@ function getFilterCount(value) {
         </span>
       </button>
     </div>
-    
+
     <BaseLoader
       v-if="feedbackStore.loading && !feedbackStore.feedback.length"
       text="Загрузка обращений..."
     />
-    
+
     <ErrorMessage
       v-else-if="feedbackStore.error"
       :message="feedbackStore.error"
       retry
       @retry="feedbackStore.fetchFeedback()"
     />
-    
+
     <EmptyState
       v-else-if="!filteredFeedback.length"
       icon="chat"
@@ -73,7 +79,7 @@ function getFilterCount(value) {
         Создать обращение
       </BaseButton>
     </EmptyState>
-    
+
     <div v-else class="feedback-list__items">
       <FeedbackItem
         v-for="feedback in filteredFeedback"

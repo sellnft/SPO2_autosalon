@@ -1,6 +1,7 @@
 <script setup>
 import BaseDrawer from '@/components/common/BaseDrawer.vue'
 import AnnouncementFilters from './AnnouncementFilters.vue'
+import BaseButton from '@/components/common/BaseButton.vue'
 
 defineProps({
   modelValue: {
@@ -14,6 +15,10 @@ defineProps({
 })
 
 const emit = defineEmits(['update:modelValue', 'update:filters', 'reset'])
+
+function handleApply() {
+  emit('update:modelValue', false)
+}
 </script>
 
 <template>
@@ -28,5 +33,11 @@ const emit = defineEmits(['update:modelValue', 'update:filters', 'reset'])
       @update:filters="emit('update:filters', $event)"
       @reset="emit('reset')"
     />
+
+    <template #footer>
+      <BaseButton block size="lg" @click="handleApply">
+        Показать результаты
+      </BaseButton>
+    </template>
   </BaseDrawer>
 </template>

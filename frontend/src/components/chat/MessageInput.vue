@@ -12,9 +12,9 @@ const textareaRef = ref(null)
 async function handleSend() {
   const content = text.value.trim()
   if (!content || chatStore.sending) return
-  
+
   text.value = ''
-  
+
   try {
     await chatStore.sendMessage(content)
   } catch (err) {
@@ -48,11 +48,11 @@ function autoResize(event) {
       @keydown="handleKeydown"
       @input="autoResize"
     ></textarea>
-    
+
     <button
       class="message-input__send"
       :disabled="!text.trim() || chatStore.sending"
-      :aria-label="'Отправить'"
+      aria-label="Отправить"
       @click="handleSend"
     >
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none">

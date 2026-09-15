@@ -17,16 +17,15 @@ const adminStore = useAdminStore()
 const toastStore = useToastStore()
 
 const showRejectModal = ref(false)
-const rejectReason = ref('')
 
-const announcement = computed(() => 
+const announcement = computed(() =>
   adminStore.announcements.find(a => a.id === Number(route.params.id))
 )
 
 async function moderate(action) {
   try {
     await adminStore.moderateAnnouncement(route.params.id, action)
-    
+
     if (action === 'approve') {
       toastStore.success('Объявление одобрено')
     } else if (action === 'reject') {
@@ -55,13 +54,12 @@ onMounted(async () => {
       </svg>
       К объявлениям
     </button>
-    
+
     <div v-if="!announcement" class="admin-announcement__loading">
       Загрузка...
     </div>
-    
+
     <template v-else>
-      <!-- Header with actions -->
       <div class="admin-announcement__header-card">
         <div class="admin-announcement__header-top">
           <div>
@@ -77,7 +75,7 @@ onMounted(async () => {
             </p>
           </div>
         </div>
-        
+
         <div class="admin-announcement__actions">
           <BaseButton
             v-if="announcement.status === 'pending'"
@@ -86,7 +84,7 @@ onMounted(async () => {
           >
             Одобрить
           </BaseButton>
-          
+
           <BaseButton
             v-if="announcement.status === 'pending'"
             variant="danger"
@@ -94,7 +92,7 @@ onMounted(async () => {
           >
             Отклонить
           </BaseButton>
-          
+
           <BaseButton
             v-if="announcement.status === 'active'"
             variant="danger"
@@ -102,7 +100,7 @@ onMounted(async () => {
           >
             Заблокировать
           </BaseButton>
-          
+
           <BaseButton
             v-if="announcement.status === 'blocked'"
             variant="primary"
@@ -112,25 +110,24 @@ onMounted(async () => {
           </BaseButton>
         </div>
       </div>
-      
-      <!-- Content -->
+
       <div class="admin-announcement__content">
         <div class="admin-announcement__main">
           <AnnouncementGallery :photos="announcement.photos" />
-          
+
           <div class="admin-announcement__section">
             <h2 class="admin-announcement__section-title">Описание</h2>
             <p class="admin-announcement__description">{{ announcement.description }}</p>
           </div>
         </div>
-        
+
         <aside class="admin-announcement__sidebar">
           <div class="admin-announcement__card">
             <div class="admin-announcement__price">
               {{ formatPrice(announcement.price) }}
             </div>
           </div>
-          
+
           <div class="admin-announcement__card">
             <h3 class="admin-announcement__card-title">Характеристики</h3>
             <dl class="admin-announcement__specs">
@@ -144,7 +141,7 @@ onMounted(async () => {
               <div><dt>Город</dt><dd>{{ announcement.city }}</dd></div>
             </dl>
           </div>
-          
+
           <div class="admin-announcement__card">
             <h3 class="admin-announcement__card-title">Продавец</h3>
             <p class="admin-announcement__seller">{{ announcement.sellerName }}</p>
@@ -153,12 +150,11 @@ onMounted(async () => {
         </aside>
       </div>
     </template>
-    
-    <!-- Reject Modal -->
+
     <ConfirmModal
       v-model="showRejectModal"
       title="Отклонить объявление"
-      message="Укажите причину отклонения, чтобы продавец мог исправить ошибки."
+      message="Объявление будет отклонено. Продавец сможет его отредактировать и отправить снова."
       confirm-text="Отклонить"
       variant="danger"
       @confirm="moderate('reject')"

@@ -44,13 +44,13 @@ const filterConfig = [
 const filteredUsers = computed(() => {
   return adminStore.users.filter(u => {
     const q = search.value.toLowerCase()
-    const matchesSearch = !q || 
+    const matchesSearch = !q ||
       u.name.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q)
-    
+
     const matchesRole = !filters.value.role || u.role === filters.value.role
     const matchesStatus = !filters.value.status || u.status === filters.value.status
-    
+
     return matchesSearch && matchesRole && matchesStatus
   })
 })
@@ -83,7 +83,7 @@ onMounted(() => {
         </p>
       </div>
     </header>
-    
+
     <AdminFilters
       v-model:search="search"
       :filters="filterConfig"
@@ -91,7 +91,7 @@ onMounted(() => {
       @update:filter="handleFilter"
       @reset="resetFilters"
     />
-    
+
     <AdminTable
       :columns="columns"
       :items="filteredUsers"
@@ -110,17 +110,17 @@ onMounted(() => {
           </div>
         </div>
       </template>
-      
+
       <template #role="{ item }">
         <span :class="['admin-users__role', `admin-users__role--${item.role}`]">
           {{ item.role === 'admin' ? 'Админ' : 'Пользователь' }}
         </span>
       </template>
-      
+
       <template #status="{ item }">
         <AdminStatusBadge :status="item.status" type="user" />
       </template>
-      
+
       <template #createdAt="{ item }">
         {{ formatDate(item.createdAt, 'short') }}
       </template>

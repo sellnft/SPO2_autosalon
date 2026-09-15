@@ -23,28 +23,27 @@ function handleSelect(chatId) {
         {{ chatStore.totalUnread }}
       </span>
     </div>
-    
+
     <div class="chat-list__search">
       <BaseInput
         v-model="chatStore.searchQuery"
         placeholder="Поиск по чатам..."
-        size="sm"
       />
     </div>
-    
+
     <div class="chat-list__body">
       <BaseLoader
-        v-if="chatStore.loading"
+        v-if="chatStore.loading && !chats.length"
         text="Загрузка чатов..."
       />
-      
+
       <EmptyState
         v-else-if="!chats.length"
         icon="chat"
         title="Нет чатов"
         description="Начните общение с продавцом из объявления"
       />
-      
+
       <div v-else class="chat-list__items">
         <ChatItem
           v-for="chat in chats"

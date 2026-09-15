@@ -18,13 +18,7 @@ const props = defineProps({
   },
   disabled: Boolean,
   loading: Boolean,
-  block: Boolean,
-  icon: String,
-  iconPosition: {
-    type: String,
-    default: 'left',
-    validator: (v) => ['left', 'right'].includes(v)
-  }
+  block: Boolean
 })
 
 const emit = defineEmits(['click'])
@@ -57,16 +51,9 @@ function handleClick(event) {
     <span v-if="loading" class="base-button__spinner">
       <span class="spinner spinner-sm" />
     </span>
-    <span v-else-if="icon && iconPosition === 'left'" class="base-button__icon">
-      <component :is="icon" />
-    </span>
-    
+
     <span v-if="$slots.default" class="base-button__text">
       <slot />
-    </span>
-    
-    <span v-if="icon && iconPosition === 'right'" class="base-button__icon">
-      <component :is="icon" />
     </span>
   </button>
 </template>
@@ -85,6 +72,7 @@ function handleClick(event) {
   white-space: nowrap;
   user-select: none;
   border: 1px solid transparent;
+  font-family: inherit;
 }
 
 /* Sizes */
@@ -180,13 +168,11 @@ function handleClick(event) {
   width: 100%;
 }
 
-/* Active state */
 .base-button:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: none;
 }
 
-/* Focus */
 .base-button:focus-visible {
   outline: 2px solid #0A84FF;
   outline-offset: 2px;
@@ -194,11 +180,6 @@ function handleClick(event) {
 
 .base-button__spinner {
   display: inline-flex;
-}
-
-.base-button__icon {
-  display: inline-flex;
-  align-items: center;
 }
 
 .base-button__text {

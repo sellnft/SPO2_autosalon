@@ -19,7 +19,12 @@ const brands = [
   { value: 'Hyundai', label: 'Hyundai' },
   { value: 'Lexus', label: 'Lexus' },
   { value: 'Mazda', label: 'Mazda' },
-  { value: 'Skoda', label: 'Skoda' }
+  { value: 'Skoda', label: 'Skoda' },
+  { value: 'Volvo', label: 'Volvo' },
+  { value: 'Nissan', label: 'Nissan' },
+  { value: 'Porsche', label: 'Porsche' },
+  { value: 'Renault', label: 'Renault' },
+  { value: 'Subaru', label: 'Subaru' }
 ]
 
 function update(key, value) {
@@ -39,7 +44,7 @@ function update(key, value) {
         required
         @update:model-value="update('brand', $event)"
       />
-      
+
       <BaseInput
         :model-value="modelValue.model"
         label="Модель"
@@ -48,7 +53,7 @@ function update(key, value) {
         required
         @update:model-value="update('model', $event)"
       />
-      
+
       <BaseInput
         :model-value="modelValue.year"
         label="Год выпуска"
@@ -58,7 +63,7 @@ function update(key, value) {
         required
         @update:model-value="update('year', $event)"
       />
-      
+
       <BaseInput
         :model-value="modelValue.vin"
         label="VIN (необязательно)"

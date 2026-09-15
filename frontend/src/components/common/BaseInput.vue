@@ -22,7 +22,12 @@ const props = defineProps({
   name: String,
   id: String,
   maxlength: [String, Number],
-  autofocus: Boolean
+  autofocus: Boolean,
+  size: {
+    type: String,
+    default: 'md',
+    validator: (v) => ['sm', 'md', 'lg'].includes(v)
+  }
 })
 
 const emit = defineEmits(['update:modelValue', 'focus', 'blur', 'input', 'change'])
@@ -33,6 +38,7 @@ const inputId = computed(() => props.id || `input-${Math.random().toString(36).s
 
 const classes = computed(() => [
   'base-input',
+  `base-input--${props.size}`,
   {
     'base-input--focused': isFocused.value,
     'base-input--error': props.error,
@@ -63,7 +69,7 @@ function handleBlur(event) {
       {{ label }}
       <span v-if="required" class="base-input__required">*</span>
     </label>
-    
+
     <div :class="classes">
       <input
         :id="inputId"
@@ -84,7 +90,7 @@ function handleBlur(event) {
         @change="emit('change', $event)"
       />
     </div>
-    
+
     <p v-if="error" class="base-input__error">{{ error }}</p>
     <p v-else-if="hint" class="base-input__hint">{{ hint }}</p>
   </div>
@@ -152,6 +158,17 @@ function handleBlur(event) {
   background: transparent;
   border: none;
   outline: none;
+  font-family: inherit;
+}
+
+.base-input--sm .base-input__field {
+  padding: 9px 14px;
+  font-size: 13px;
+}
+
+.base-input--lg .base-input__field {
+  padding: 14px 18px;
+  font-size: 15px;
 }
 
 .base-input__field::placeholder {

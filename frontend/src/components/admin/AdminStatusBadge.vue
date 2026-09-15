@@ -39,7 +39,7 @@ const config = computed(() => {
       inactive: { label: 'Неактивно', color: 'neutral' }
     }
   }
-  
+
   const map = maps[props.type] || maps.default
   return map[props.status] || { label: props.status, color: 'neutral' }
 })

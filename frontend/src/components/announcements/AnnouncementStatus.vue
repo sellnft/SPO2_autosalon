@@ -13,6 +13,7 @@ const statusInfo = computed(() => {
     active: { label: 'Активно', type: 'success' },
     pending: { label: 'На модерации', type: 'warning' },
     rejected: { label: 'Отклонено', type: 'error' },
+    blocked: { label: 'Заблокировано', type: 'error' },
     sold: { label: 'Продано', type: 'neutral' }
   }
   return map[props.status] || { label: props.status, type: 'neutral' }

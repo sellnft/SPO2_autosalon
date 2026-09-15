@@ -51,10 +51,10 @@ const filteredFeedback = computed(() => {
     const matchesSearch = !q ||
       f.subject.toLowerCase().includes(q) ||
       f.userName?.toLowerCase().includes(q)
-    
+
     const matchesStatus = !filters.value.status || f.status === filters.value.status
     const matchesPriority = !filters.value.priority || f.priority === filters.value.priority
-    
+
     return matchesSearch && matchesStatus && matchesPriority
   })
 })
@@ -87,7 +87,7 @@ onMounted(() => {
         </p>
       </div>
     </header>
-    
+
     <AdminFilters
       v-model:search="search"
       :filters="filterConfig"
@@ -95,7 +95,7 @@ onMounted(() => {
       @update:filter="handleFilter"
       @reset="resetFilters"
     />
-    
+
     <AdminTable
       :columns="columns"
       :items="filteredFeedback"
@@ -109,17 +109,17 @@ onMounted(() => {
           <p class="admin-feedback__id">#{{ item.id }}</p>
         </div>
       </template>
-      
+
       <template #priority="{ item }">
         <span :class="['admin-feedback__priority', `admin-feedback__priority--${item.priority}`]">
           {{ item.priority }}
         </span>
       </template>
-      
+
       <template #status="{ item }">
         <AdminStatusBadge :status="item.status" type="feedback" />
       </template>
-      
+
       <template #updatedAt="{ item }">
         {{ formatDate(item.updatedAt, 'relative') }}
       </template>

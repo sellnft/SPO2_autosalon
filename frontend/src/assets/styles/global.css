@@ -12,7 +12,7 @@ html {
   html {
     scroll-behavior: auto;
   }
-  
+
   *,
   *::before,
   *::after {
@@ -34,7 +34,7 @@ body {
 /* Container */
 .container {
   width: 100%;
-  max-width: 1440px;
+  max-width: var(--container-max-width);
   margin: 0 auto;
   padding: 0 40px;
 }
@@ -165,7 +165,7 @@ img {
     min-height: 44px;
     min-width: 44px;
   }
-  
+
   button:where(.btn-inline),
   a:where(.link-inline) {
     min-height: auto;

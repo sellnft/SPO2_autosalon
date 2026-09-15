@@ -1,5 +1,4 @@
 <script setup>
-import { computed } from 'vue'
 import BaseInput from '@/components/common/BaseInput.vue'
 import BaseSelect from '@/components/common/BaseSelect.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
@@ -35,7 +34,10 @@ const bodyTypes = [
   { value: 'Седан', label: 'Седан' },
   { value: 'Кроссовер', label: 'Кроссовер' },
   { value: 'SUV', label: 'SUV' },
-  { value: 'Лифтбек', label: 'Лифтбек' }
+  { value: 'Хэтчбек', label: 'Хэтчбек' },
+  { value: 'Лифтбек', label: 'Лифтбек' },
+  { value: 'Универсал', label: 'Универсал' },
+  { value: 'Купе', label: 'Купе' }
 ]
 
 const transmissions = [
@@ -51,6 +53,27 @@ const drives = [
   { value: 'Полный', label: 'Полный' }
 ]
 
+const colors = [
+  { value: 'Черный', label: 'Черный' },
+  { value: 'Белый', label: 'Белый' },
+  { value: 'Серебристый', label: 'Серебристый' },
+  { value: 'Серый', label: 'Серый' },
+  { value: 'Синий', label: 'Синий' },
+  { value: 'Красный', label: 'Красный' },
+  { value: 'Зеленый', label: 'Зеленый' }
+]
+
+const cities = [
+  { value: 'Москва', label: 'Москва' },
+  { value: 'Санкт-Петербург', label: 'Санкт-Петербург' },
+  { value: 'Казань', label: 'Казань' },
+  { value: 'Екатеринбург', label: 'Екатеринбург' },
+  { value: 'Новосибирск', label: 'Новосибирск' },
+  { value: 'Ростов-на-Дону', label: 'Ростов-на-Дону' },
+  { value: 'Уфа', label: 'Уфа' },
+  { value: 'Самара', label: 'Самара' }
+]
+
 function updateFilter(key, value) {
   emit('update:filters', { ...props.filters, [key]: value })
 }
@@ -64,7 +87,7 @@ function updateFilter(key, value) {
         Сбросить
       </BaseButton>
     </div>
-    
+
     <div class="announcement-filters__group">
       <label class="announcement-filters__label">Марка</label>
       <BaseSelect
@@ -75,7 +98,16 @@ function updateFilter(key, value) {
         @update:model-value="updateFilter('brand', $event)"
       />
     </div>
-    
+
+    <div class="announcement-filters__group">
+      <label class="announcement-filters__label">Модель</label>
+      <BaseInput
+        :model-value="filters.model"
+        placeholder="X5, Camry..."
+        @update:model-value="updateFilter('model', $event)"
+      />
+    </div>
+
     <div class="announcement-filters__group">
       <label class="announcement-filters__label">Цена, ₽</label>
       <div class="announcement-filters__row">
@@ -93,7 +125,7 @@ function updateFilter(key, value) {
         />
       </div>
     </div>
-    
+
     <div class="announcement-filters__group">
       <label class="announcement-filters__label">Год</label>
       <div class="announcement-filters__row">
@@ -111,40 +143,7 @@ function updateFilter(key, value) {
         />
       </div>
     </div>
-    
-    <div class="announcement-filters__group">
-      <label class="announcement-filters__label">Кузов</label>
-      <BaseSelect
-        :model-value="filters.bodyType"
-        :options="bodyTypes"
-        placeholder="Любой"
-        clearable
-        @update:model-value="updateFilter('bodyType', $event)"
-      />
-    </div>
-    
-    <div class="announcement-filters__group">
-      <label class="announcement-filters__label">КПП</label>
-      <BaseSelect
-        :model-value="filters.transmission"
-        :options="transmissions"
-        placeholder="Любая"
-        clearable
-        @update:model-value="updateFilter('transmission', $event)"
-      />
-    </div>
-    
-    <div class="announcement-filters__group">
-      <label class="announcement-filters__label">Привод</label>
-      <BaseSelect
-        :model-value="filters.drive"
-        :options="drives"
-        placeholder="Любой"
-        clearable
-        @update:model-value="updateFilter('drive', $event)"
-      />
-    </div>
-    
+
     <div class="announcement-filters__group">
       <label class="announcement-filters__label">Пробег, км</label>
       <div class="announcement-filters__row">
@@ -161,6 +160,61 @@ function updateFilter(key, value) {
           @update:model-value="updateFilter('mileageTo', $event)"
         />
       </div>
+    </div>
+
+    <div class="announcement-filters__group">
+      <label class="announcement-filters__label">Кузов</label>
+      <BaseSelect
+        :model-value="filters.bodyType"
+        :options="bodyTypes"
+        placeholder="Любой"
+        clearable
+        @update:model-value="updateFilter('bodyType', $event)"
+      />
+    </div>
+
+    <div class="announcement-filters__group">
+      <label class="announcement-filters__label">КПП</label>
+      <BaseSelect
+        :model-value="filters.transmission"
+        :options="transmissions"
+        placeholder="Любая"
+        clearable
+        @update:model-value="updateFilter('transmission', $event)"
+      />
+    </div>
+
+    <div class="announcement-filters__group">
+      <label class="announcement-filters__label">Привод</label>
+      <BaseSelect
+        :model-value="filters.drive"
+        :options="drives"
+        placeholder="Любой"
+        clearable
+        @update:model-value="updateFilter('drive', $event)"
+      />
+    </div>
+
+    <div class="announcement-filters__group">
+      <label class="announcement-filters__label">Цвет</label>
+      <BaseSelect
+        :model-value="filters.color"
+        :options="colors"
+        placeholder="Любой"
+        clearable
+        @update:model-value="updateFilter('color', $event)"
+      />
+    </div>
+
+    <div class="announcement-filters__group">
+      <label class="announcement-filters__label">Город</label>
+      <BaseSelect
+        :model-value="filters.city"
+        :options="cities"
+        placeholder="Все города"
+        clearable
+        @update:model-value="updateFilter('city', $event)"
+      />
     </div>
   </div>
 </template>

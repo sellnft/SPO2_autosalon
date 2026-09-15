@@ -20,7 +20,7 @@ const loading = ref(true)
 const showBlockModal = ref(false)
 const userAnnouncements = ref([])
 
-const user = computed(() => 
+const user = computed(() =>
   adminStore.users.find(u => u.id === Number(route.params.id))
 )
 
@@ -30,7 +30,7 @@ async function loadUser() {
     if (!adminStore.users.length) {
       await adminStore.fetchUsers()
     }
-    
+
     if (user.value) {
       await announcementsStore.fetchAnnouncements({ perPage: 100 })
       userAnnouncements.value = announcementsStore.announcements.filter(
@@ -44,21 +44,15 @@ async function loadUser() {
 
 async function toggleBlock() {
   if (!user.value) return
-  
+
   try {
-    // TODO: При реальном backend - вызывать API
-    const newStatus = user.value.status === 'blocked' ? 'active' : 'blocked'
-    
-    if (newStatus === 'blocked') {
-      user.value.status = 'blocked'
-      user.value.blockReason = 'Заблокирован администратором'
-      toastStore.success('Пользователь заблокирован')
-    } else {
-      user.value.status = 'active'
-      user.value.blockReason = null
+    if (user.value.status === 'blocked') {
+      await adminStore.unblockUser(user.value.id)
       toastStore.success('Пользователь разблокирован')
+    } else {
+      await adminStore.blockUser(user.value.id)
+      toastStore.success('Пользователь заблокирован')
     }
-    
     showBlockModal.value = false
   } catch (err) {
     toastStore.error('Ошибка')
@@ -76,17 +70,16 @@ onMounted(loadUser)
       </svg>
       К списку пользователей
     </button>
-    
+
     <div v-if="loading" class="admin-user__loading">Загрузка...</div>
-    
+
     <template v-else-if="user">
-      <!-- Header -->
       <div class="admin-user__card">
         <div class="admin-user__header">
           <div class="admin-user__avatar">
             {{ user.name.charAt(0) }}
           </div>
-          
+
           <div class="admin-user__info">
             <div class="admin-user__name-row">
               <h1 class="admin-user__name">{{ user.name }}</h1>
@@ -95,7 +88,7 @@ onMounted(loadUser)
             <p class="admin-user__email">{{ user.email }}</p>
             <p class="admin-user__phone">{{ user.phone }}</p>
           </div>
-          
+
           <div class="admin-user__actions">
             <BaseButton
               :variant="user.status === 'blocked' ? 'primary' : 'danger'"
@@ -105,7 +98,7 @@ onMounted(loadUser)
             </BaseButton>
           </div>
         </div>
-        
+
         <div class="admin-user__meta">
           <div class="admin-user__meta-item">
             <span class="admin-user__meta-label">ID</span>
@@ -138,31 +131,30 @@ onMounted(loadUser)
             <span class="admin-user__meta-value">{{ user.announcementsCount }}</span>
           </div>
         </div>
-        
+
         <div v-if="user.blockReason" class="admin-user__block-reason">
           <strong>Причина блокировки:</strong> {{ user.blockReason }}
         </div>
       </div>
-      
-      <!-- Announcements -->
+
       <div class="admin-user__section">
         <h2 class="admin-user__section-title">
           Объявления ({{ userAnnouncements.length }})
         </h2>
-        
+
         <div v-if="!userAnnouncements.length" class="admin-user__empty">
           У пользователя нет объявлений
         </div>
-        
+
         <AnnouncementList v-else :announcements="userAnnouncements" />
       </div>
     </template>
-    
+
     <ConfirmModal
       v-model="showBlockModal"
       :title="user?.status === 'blocked' ? 'Разблокировать пользователя?' : 'Заблокировать пользователя?'"
-      :message="user?.status === 'blocked' 
-        ? 'Пользователь снова получит доступ к платформе.' 
+      :message="user?.status === 'blocked'
+        ? 'Пользователь снова получит доступ к платформе.'
         : 'Пользователь потеряет доступ к платформе и его объявления будут скрыты.'"
       :confirm-text="user?.status === 'blocked' ? 'Разблокировать' : 'Заблокировать'"
       :variant="user?.status === 'blocked' ? 'primary' : 'danger'"

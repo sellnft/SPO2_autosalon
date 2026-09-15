@@ -30,7 +30,7 @@ const textareaRef = ref(null)
 
 const inputId = computed(() => props.id || `textarea-${Math.random().toString(36).slice(2, 11)}`)
 
-function autoResize() {
+function autoResizeFn() {
   if (props.autoResize && textareaRef.value) {
     textareaRef.value.style.height = 'auto'
     textareaRef.value.style.height = textareaRef.value.scrollHeight + 'px'
@@ -40,7 +40,7 @@ function autoResize() {
 function handleInput(event) {
   emit('update:modelValue', event.target.value)
   emit('input', event)
-  autoResize()
+  autoResizeFn()
 }
 </script>
 
@@ -50,11 +50,11 @@ function handleInput(event) {
       {{ label }}
       <span v-if="required" class="base-textarea__required">*</span>
     </label>
-    
-    <div 
+
+    <div
       :class="[
         'base-textarea',
-        { 
+        {
           'base-textarea--focused': isFocused,
           'base-textarea--error': error,
           'base-textarea--disabled': disabled
@@ -77,12 +77,12 @@ function handleInput(event) {
         @focus="isFocused = true; emit('focus', $event)"
         @blur="isFocused = false; emit('blur', $event)"
       ></textarea>
-      
+
       <div v-if="maxlength" class="base-textarea__counter">
         {{ String(modelValue).length }} / {{ maxlength }}
       </div>
     </div>
-    
+
     <p v-if="error" class="base-textarea__error">{{ error }}</p>
     <p v-else-if="hint" class="base-textarea__hint">{{ hint }}</p>
   </div>
@@ -136,12 +136,14 @@ function handleInput(event) {
   width: 100%;
   padding: 12px 16px;
   font-size: 14px;
+  font-family: inherit;
   color: #111827;
   background: transparent;
   border: none;
   outline: none;
   resize: vertical;
   min-height: 100px;
+  line-height: 1.5;
 }
 
 .base-textarea__field::placeholder {

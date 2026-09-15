@@ -26,4 +26,14 @@ defineProps({
   gap: 8px;
   flex-wrap: wrap;
 }
+
+@media (max-width: 640px) {
+  .announcement-actions {
+    width: 100%;
+  }
+
+  .announcement-actions > * {
+    flex: 1;
+  }
+}
 </style>

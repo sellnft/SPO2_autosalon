@@ -28,7 +28,7 @@ const statusIcon = computed(() => {
   <div :class="['message-item', { 'message-item--own': own }]">
     <div class="message-item__bubble">
       <p class="message-item__content">{{ message.content }}</p>
-      
+
       <div class="message-item__meta">
         <span class="message-item__time">
           {{ formatDate(message.createdAt, 'time') }}

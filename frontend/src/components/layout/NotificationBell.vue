@@ -51,12 +51,12 @@ onUnmounted(() => {
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path d="M15 6a5 5 0 10-10 0c0 6-2 7-2 7h14s-2-1-2-7zM8 17a2 2 0 004 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
-      
+
       <span v-if="unreadCount" class="notification-bell__badge">
         {{ unreadCount > 9 ? '9+' : unreadCount }}
       </span>
     </button>
-    
+
     <Transition name="dropdown">
       <div v-if="isOpen" class="notification-bell__dropdown">
         <div class="notification-bell__header">
@@ -65,7 +65,7 @@ onUnmounted(() => {
             {{ unreadCount }} новых
           </span>
         </div>
-        
+
         <div class="notification-bell__list">
           <NotificationItem
             v-for="n in recentNotifications"
@@ -73,12 +73,12 @@ onUnmounted(() => {
             :notification="n"
             @click="isOpen = false"
           />
-          
+
           <div v-if="!recentNotifications.length" class="notification-bell__empty">
             Нет уведомлений
           </div>
         </div>
-        
+
         <button class="notification-bell__footer" @click="goToAll">
           Все уведомления
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -143,6 +143,7 @@ onUnmounted(() => {
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  z-index: 50;
 }
 
 .notification-bell__header {

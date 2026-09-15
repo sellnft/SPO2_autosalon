@@ -21,7 +21,7 @@ const previewAnnouncement = computed(() => ({
   color: props.modelValue.color,
   city: props.modelValue.city,
   description: props.modelValue.description,
-  photos: props.modelValue.photos.map(p => p.url),
+  photos: props.modelValue.photos.map(p => typeof p === 'string' ? p : p.url),
   views: 0,
   favourites: 0,
   status: 'pending',
@@ -42,7 +42,7 @@ const previewAnnouncement = computed(() => ({
 
     <div class="step__summary">
       <h3 class="step__summary-title">Сводка</h3>
-      
+
       <dl class="step__summary-list">
         <div class="step__summary-item">
           <dt>Автомобиль</dt>

@@ -59,11 +59,14 @@ function handleChange(event) {
         @change="handleChange"
       />
       <span class="base-checkbox__custom">
-        <svg v-if="isChecked" width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <svg v-if="isChecked && !indeterminate" width="12" height="12" viewBox="0 0 12 12" fill="none">
           <path d="M2 6.5L4.5 9L10 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         </svg>
+        <span v-if="indeterminate" class="base-checkbox__dash"></span>
       </span>
-      <span v-if="label" class="base-checkbox__label">{{ label }}</span>
+      <span v-if="label || $slots.label" class="base-checkbox__label">
+        <slot name="label">{{ label }}</slot>
+      </span>
     </label>
     <p v-if="error" class="base-checkbox__error">{{ error }}</p>
   </div>
@@ -101,6 +104,7 @@ function handleChange(event) {
   justify-content: center;
   width: 20px;
   height: 20px;
+  flex-shrink: 0;
   background: white;
   border: 2px solid #D1D5DB;
   border-radius: 6px;
@@ -108,11 +112,7 @@ function handleChange(event) {
   transition: all 0.2s;
 }
 
-.base-checkbox__input:checked + .base-checkbox__custom {
-  background: #0A84FF;
-  border-color: #0A84FF;
-}
-
+.base-checkbox__input:checked + .base-checkbox__custom,
 .base-checkbox__input:indeterminate + .base-checkbox__custom {
   background: #0A84FF;
   border-color: #0A84FF;
@@ -123,9 +123,17 @@ function handleChange(event) {
   outline-offset: 2px;
 }
 
+.base-checkbox__dash {
+  width: 10px;
+  height: 2px;
+  background: white;
+  border-radius: 1px;
+}
+
 .base-checkbox__label {
   font-size: 14px;
   color: #374151;
+  line-height: 1.4;
 }
 
 .base-checkbox__error {
