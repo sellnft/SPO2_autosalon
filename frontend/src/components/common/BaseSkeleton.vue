@@ -15,18 +15,38 @@ defineProps({
   },
   animation: {
     type: String,
-    default: 'pulse',
-    validator: (v) => ['pulse', 'wave', 'none'].includes(v)
+    default: 'shimmer',
+    validator: (v) => ['pulse', 'wave', 'shimmer', 'none'].includes(v)
+  },
+  lines: {
+    type: Number,
+    default: 1
   }
 })
 </script>
 
 <template>
   <div
+    v-if="variant === 'text' && lines > 1"
+    class="cv-skeleton-lines"
+  >
+    <span
+      v-for="i in lines"
+      :key="i"
+      :class="['cv-skeleton', `cv-skeleton--${animation}`]"
+      :style="{
+        width: i === lines ? '65%' : width,
+        height
+      }"
+    ></span>
+  </div>
+
+  <div
+    v-else
     :class="[
-      'base-skeleton',
-      `base-skeleton--${variant}`,
-      `base-skeleton--${animation}`
+      'cv-skeleton',
+      `cv-skeleton--${variant}`,
+      `cv-skeleton--${animation}`
     ]"
     :style="{ width, height }"
   >
@@ -35,57 +55,133 @@ defineProps({
 </template>
 
 <style scoped>
-.base-skeleton {
-  display: block;
-  background: #E5E7EB;
+.cv-skeleton-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
 }
 
-.base-skeleton--text {
-  border-radius: 4px;
+.cv-skeleton {
+  position: relative;
+  display: block;
+  background:
+    linear-gradient(180deg, rgba(28, 24, 18, 0.35), rgba(15, 13, 10, 0.45)),
+    linear-gradient(180deg, #1A1A22 0%, #14141A 100%);
+  border: 1px solid rgba(201, 169, 97, 0.08);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.cv-skeleton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(232, 213, 160, 0.12) 50%,
+    transparent
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.cv-skeleton--text {
+  border-radius: 6px;
   height: 16px;
 }
 
-.base-skeleton--circular {
+.cv-skeleton--circular {
   border-radius: 50%;
 }
 
-.base-skeleton--rectangular {
+.cv-skeleton--rectangular {
   border-radius: 0;
 }
 
-.base-skeleton--rounded {
-  border-radius: 8px;
+.cv-skeleton--rounded {
+  border-radius: 12px;
 }
 
-.base-skeleton--pulse {
-  animation: skeleton-pulse 1.5s ease-in-out infinite;
+.cv-skeleton--pulse {
+  animation: cvSkeletonPulse 1.8s ease-in-out infinite;
 }
 
-.base-skeleton--wave {
+.cv-skeleton--wave {
   overflow: hidden;
-  position: relative;
 }
 
-.base-skeleton--wave::after {
+.cv-skeleton--wave::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
     90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
+    transparent 0%,
+    rgba(255, 245, 214, 0.06) 50%,
+    transparent 100%
   );
-  animation: skeleton-wave 1.5s ease-in-out infinite;
+  animation: cvSkeletonWave 1.8s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
 }
 
-@keyframes skeleton-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+.cv-skeleton--shimmer {
+  overflow: hidden;
 }
 
-@keyframes skeleton-wave {
+.cv-skeleton--shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(201, 169, 97, 0.1) 40%,
+    rgba(232, 213, 160, 0.22) 50%,
+    rgba(201, 169, 97, 0.1) 60%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  animation: cvSkeletonShimmer 2s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cv-skeleton--none {
+  animation: none;
+}
+
+@keyframes cvSkeletonPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@keyframes cvSkeletonWave {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
+}
+
+@keyframes cvSkeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (max-width: 640px) {
+  .cv-skeleton-lines {
+    gap: 8px;
+  }
+
+  .cv-skeleton--rounded {
+    border-radius: 10px;
+  }
 }
 </style>

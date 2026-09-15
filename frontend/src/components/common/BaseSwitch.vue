@@ -7,6 +7,7 @@ const props = defineProps({
     default: false
   },
   label: String,
+  description: String,
   disabled: Boolean,
   size: {
     type: String,
@@ -28,109 +29,272 @@ function handleChange(event) {
 </script>
 
 <template>
-  <label :class="['base-switch', `base-switch--${size}`, { 'base-switch--disabled': disabled }]">
+  <label
+    :class="[
+      'cv-switch',
+      `cv-switch--${size}`,
+      {
+        'cv-switch--disabled': disabled,
+        'cv-switch--on': modelValue,
+        'cv-switch--with-desc': description
+      }
+    ]"
+  >
     <input
       :id="inputId"
       type="checkbox"
       :checked="modelValue"
       :disabled="disabled"
       :name="name"
-      class="base-switch__input"
+      class="cv-switch__input"
       @change="handleChange"
     />
-    <span class="base-switch__track">
-      <span class="base-switch__thumb"></span>
+
+    <span class="cv-switch__track">
+      <span class="cv-switch__track-glow" aria-hidden="true"></span>
+      <span class="cv-switch__thumb">
+        <span class="cv-switch__thumb-shine" aria-hidden="true"></span>
+      </span>
     </span>
-    <span v-if="label" class="base-switch__label">{{ label }}</span>
+
+    <span v-if="label || description || $slots.label" class="cv-switch__content">
+      <span v-if="label || $slots.label" class="cv-switch__label">
+        <slot name="label">{{ label }}</slot>
+      </span>
+      <span v-if="description" class="cv-switch__description">{{ description }}</span>
+    </span>
   </label>
 </template>
 
 <style scoped>
-.base-switch {
+.cv-switch {
   display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 12px;
   cursor: pointer;
   user-select: none;
+  transition: opacity 0.2s ease;
 }
 
-.base-switch--disabled {
-  opacity: 0.5;
+.cv-switch--with-desc {
+  align-items: flex-start;
+}
+
+.cv-switch--disabled {
+  opacity: 0.45;
   cursor: not-allowed;
+  filter: saturate(0.5);
 }
 
-.base-switch__input {
+.cv-switch__input {
   position: absolute;
   opacity: 0;
   width: 0;
   height: 0;
+  pointer-events: none;
 }
 
-.base-switch__track {
+.cv-switch__track {
   position: relative;
-  width: 44px;
-  height: 24px;
+  display: inline-flex;
+  align-items: center;
   flex-shrink: 0;
-  background: #D1D5DB;
-  border-radius: 12px;
-  transition: all 0.2s;
+  width: 46px;
+  height: 26px;
+  padding: 3px;
+  background:
+    linear-gradient(180deg, rgba(28, 24, 18, 0.5), rgba(15, 13, 10, 0.6)),
+    linear-gradient(180deg, #1A1A22 0%, #101014 100%);
+  border: 1px solid rgba(201, 169, 97, 0.22);
+  border-radius: 999px;
+  transition: all 0.3s cubic-bezier(0.34, 1.2, 0.64, 1);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 1px 0 rgba(232, 213, 160, 0.04) inset;
+  overflow: hidden;
 }
 
-.base-switch--sm .base-switch__track {
-  width: 36px;
-  height: 20px;
+.cv-switch--sm .cv-switch__track {
+  width: 38px;
+  height: 22px;
+  padding: 2.5px;
 }
 
-.base-switch--lg .base-switch__track {
-  width: 52px;
-  height: 28px;
+.cv-switch--lg .cv-switch__track {
+  width: 54px;
+  height: 30px;
+  padding: 3.5px;
 }
 
-.base-switch__thumb {
+.cv-switch__track-glow {
   position: absolute;
-  top: 2px;
-  left: 2px;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at center, rgba(232, 213, 160, 0.5), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+
+.cv-switch:hover:not(.cv-switch--disabled) .cv-switch__track {
+  border-color: rgba(201, 169, 97, 0.5);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 16px rgba(201, 169, 97, 0.18),
+    0 1px 0 rgba(232, 213, 160, 0.06) inset;
+}
+
+.cv-switch--on .cv-switch__track {
+  background: linear-gradient(135deg, #F5E6BC 0%, #C9A961 55%, #8B6F3F 100%);
+  border-color: rgba(232, 213, 160, 0.6);
+  box-shadow:
+    0 4px 18px rgba(201, 169, 97, 0.42),
+    0 0 32px rgba(201, 169, 97, 0.28),
+    0 0 0 1px rgba(255, 245, 214, 0.15) inset,
+    0 1px 0 rgba(255, 245, 214, 0.45) inset;
+}
+
+.cv-switch--on .cv-switch__track-glow {
+  opacity: 1;
+  animation: cvSwitchGlow 2.4s ease-in-out infinite;
+}
+
+@keyframes cvSwitchGlow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+.cv-switch__thumb {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
   height: 20px;
-  background: white;
+  background:
+    linear-gradient(180deg, #FFFFFF 0%, #F5EFE0 100%);
   border-radius: 50%;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.4),
+    0 1px 0 rgba(255, 255, 255, 0.8) inset;
+  transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: translateX(0);
+  overflow: hidden;
+  z-index: 1;
 }
 
-.base-switch--sm .base-switch__thumb {
-  width: 16px;
-  height: 16px;
+.cv-switch__thumb-shine {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 245, 214, 0.7) 50%,
+    transparent 70%
+  );
+  transition: left 0.6s ease;
+  pointer-events: none;
 }
 
-.base-switch--lg .base-switch__thumb {
-  width: 24px;
-  height: 24px;
+.cv-switch:hover:not(.cv-switch--disabled) .cv-switch__thumb-shine {
+  left: 100%;
 }
 
-.base-switch__input:checked + .base-switch__track {
-  background: #0A84FF;
+.cv-switch--sm .cv-switch__thumb {
+  width: 17px;
+  height: 17px;
 }
 
-.base-switch__input:checked + .base-switch__track .base-switch__thumb {
+.cv-switch--lg .cv-switch__thumb {
+  width: 23px;
+  height: 23px;
+}
+
+.cv-switch--on .cv-switch__thumb {
   transform: translateX(20px);
+  background:
+    linear-gradient(180deg, #FFFFFF 0%, #FFF5D6 100%);
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    0 0 16px rgba(255, 245, 214, 0.6),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
-.base-switch--sm .base-switch__input:checked + .base-switch__track .base-switch__thumb {
+.cv-switch--sm.cv-switch--on .cv-switch__thumb {
   transform: translateX(16px);
 }
 
-.base-switch--lg .base-switch__input:checked + .base-switch__track .base-switch__thumb {
+.cv-switch--lg.cv-switch--on .cv-switch__thumb {
   transform: translateX(24px);
 }
 
-.base-switch__input:focus-visible + .base-switch__track {
-  outline: 2px solid #0A84FF;
-  outline-offset: 2px;
+.cv-switch__input:focus-visible + .cv-switch__track {
+  outline: 2px solid #C9A961;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(201, 169, 97, 0.15);
 }
 
-.base-switch__label {
-  font-size: 14px;
-  color: #374151;
+.cv-switch__content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.cv-switch__label {
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: 0.05px;
+  line-height: 1.4;
+  color: rgba(220, 210, 195, 0.85);
+  transition: color 0.25s ease;
+}
+
+.cv-switch:hover:not(.cv-switch--disabled) .cv-switch__label {
+  color: #F5E6BC;
+}
+
+.cv-switch--on .cv-switch__label {
+  color: #F5E6BC;
+}
+
+.cv-switch__description {
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.05px;
+  color: rgba(200, 190, 175, 0.5);
+}
+
+@media (max-width: 640px) {
+  .cv-switch {
+    gap: 10px;
+  }
+
+  .cv-switch__track {
+    width: 44px;
+    height: 24px;
+    padding: 3px;
+  }
+
+  .cv-switch__thumb {
+    width: 18px;
+    height: 18px;
+  }
+
+  .cv-switch--on .cv-switch__thumb {
+    transform: translateX(20px);
+  }
+
+  .cv-switch__label {
+    font-size: 13px;
+  }
+
+  .cv-switch__description {
+    font-size: 11.5px;
+  }
 }
 </style>
