@@ -108,7 +108,8 @@ onUnmounted(() => {
 .cv-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 9000;
+  isolation: isolate;
   display: flex;
   align-items: center;
   justify-content: center;

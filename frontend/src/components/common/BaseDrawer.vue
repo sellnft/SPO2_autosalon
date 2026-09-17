@@ -103,7 +103,7 @@ onUnmounted(() => {
 .cv-drawer-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 8500;
   background: rgba(5, 5, 7, 0.72);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);

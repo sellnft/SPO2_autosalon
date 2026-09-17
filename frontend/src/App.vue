@@ -31,8 +31,20 @@ onMounted(async () => {
 
 <style>
 #app {
+  position: relative;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  isolation: auto;
+}
+
+body {
+  position: relative;
+}
+
+/* Гарантируем, что Teleport-элементы в body находятся ВЫШЕ #app */
+body > .cv-modal-overlay,
+body > .cv-toasts,
+body > .cv-legal,
+body > .cv-drawer-overlay {
+  position: fixed;
 }
 </style>
