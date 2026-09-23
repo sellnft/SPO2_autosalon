@@ -4,15 +4,61 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import EmptyLayout from '@/layouts/EmptyLayout.vue'
 
 /* ============================================================
- *  Комментарии по структуре:
- *  - Порядок важен: static > dynamic > wildcard
- *  - `requiresAuth: false` НЕ указываем — это дефолт
- *  - Группируем auth-роуты под один AuthLayout
- *  - meta.preserveScroll — не сбрасывать скролл при back
+ *  Структура маршрутов
+ *  ------------------------------------------------------------
+ *  - Vue Router 4 матчит по специфичности, а не по порядку,
+ *    но одинаковые по специфичности пути разрешаются в порядке
+ *    объявления — поэтому статика выше динамики, wildcard в конце.
+ *  - meta.requiresAuth / requiresGuest / requiresAdmin читаются
+ *    через to.matched, чтобы наследоваться от родителя к детям.
+ *  - meta.preserveScroll — не сбрасывать скролл при back/forward.
+ *  - meta.layout — опциональный override layout (используется,
+ *    если layout выбирается в router-view, а не вложенностью).
  * ============================================================ */
 
+/* ============================================================
+ *  Стратегия валидации ID
+ *  ------------------------------------------------------------
+ *  Если backend вернёт UUID вместо числовых ID — достаточно
+ *  поменять ID_STRATEGY на 'uuid'. Все динамические маршруты
+ *  автоматически начнут принимать UUID и перестанут принимать
+ *  числовые значения (и наоборот).
+ *
+ *  Регулярки:
+ *  - numeric: только цифры, 1 и более
+ *  - uuid:    канонический UUID v4, регистр не важен
+ * ============================================================ */
+const ID_STRATEGY = 'numeric' // 'numeric' | 'uuid'
+
+const NUMERIC_ID = ':id(\\d+)'
+const UUID_ID = ':id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})'
+
+/** Универсальный сегмент ID для всех динамических маршрутов */
+const ID = ID_STRATEGY === 'uuid' ? UUID_ID : NUMERIC_ID
+
+/* ============================================================
+ *  Прочие параметры
+ * ============================================================ */
+/** Токен из письма: base64url, hex или JWT */
+const TOKEN = ':token([A-Za-z0-9._~-]+)'
+
+/* ============================================================
+ *  Хелперы для проверки параметров внутри компонента
+ *  (на случай, если роут всё-таки пропустил невалидное значение)
+ * ============================================================ */
+export const isNumericId = (v) => /^\d+$/.test(String(v))
+export const isUuid = (v) =>
+  /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(v))
+export const isValidId = (v) =>
+  ID_STRATEGY === 'uuid' ? isUuid(v) : isNumericId(v)
+
+/* ============================================================
+ *  Маршруты
+ * ============================================================ */
 const routes = [
-  /* ---------- Основной сайт (DefaultLayout) ---------- */
+  /* ============================================================
+   *  Основной сайт
+   * ============================================================ */
   {
     path: '/',
     component: DefaultLayout,
@@ -23,36 +69,36 @@ const routes = [
         component: () => import('@/pages/Home/HomePage.vue'),
         meta: { title: 'Главная' }
       },
+
+      /* ---------- Каталог ---------- */
       {
         path: 'announcements',
         name: 'announcements',
         component: () => import('@/pages/Announcements/AnnouncementsPage.vue'),
         meta: { title: 'Каталог', preserveScroll: true }
       },
-
-      // ВАЖНО: 'create' должен идти ДО ':id', иначе роутер сочтёт за ID
       {
         path: 'announcements/create',
         name: 'announcement-create',
         component: () => import('@/pages/Announcements/CreateAnnouncementPage.vue'),
-        meta: { title: 'Создать объявление', requiresAuth: true, layout: 'default' }
+        meta: { title: 'Создать объявление', requiresAuth: true }
       },
       {
-        path: 'announcements/:id',
+        path: `announcements/${ID}`,
         name: 'announcement-detail',
         component: () => import('@/pages/Announcements/AnnouncementPage.vue'),
         props: true,
-        // ID — только цифры (или UUID). Не пускаем /announcements/abc
         meta: { title: 'Объявление' }
       },
       {
-        path: 'announcements/:id/edit',
+        path: `announcements/${ID}/edit`,
         name: 'announcement-edit',
         component: () => import('@/pages/Announcements/EditAnnouncementPage.vue'),
         props: true,
         meta: { title: 'Редактировать', requiresAuth: true }
       },
 
+      /* ---------- Избранное ---------- */
       {
         path: 'favourites',
         name: 'favourites',
@@ -60,7 +106,24 @@ const routes = [
         meta: { title: 'Избранное', requiresAuth: true, preserveScroll: true }
       },
 
-      /* ---------- Профиль: группируем, чтобы не повторять requiresAuth ---------- */
+      /* ---------- Публичный профиль продавца ---------- */
+      {
+        path: `sellers/${ID}`,
+        name: 'seller-profile',
+        component: () => import('@/pages/Sellers/SellerProfilePage.vue'),
+        props: true,
+        meta: { title: 'Профиль продавца' }
+      },
+
+      /* ---------- Аналитика (личная) ---------- */
+      {
+        path: 'analytics',
+        name: 'analytics',
+        component: () => import('@/pages/Analytics/AnalyticsPage.vue'),
+        meta: { title: 'Аналитика', requiresAuth: true }
+      },
+
+      /* ---------- Профиль ---------- */
       {
         path: 'profile',
         meta: { requiresAuth: true },
@@ -95,12 +158,22 @@ const routes = [
             component: () => import('@/pages/Profile/SavedSearchesPage.vue'),
             meta: { title: 'Сохранённые поиски' }
           },
+
+          /* Уведомления: inbox + настройки — два разных роута */
           {
             path: 'notifications',
+            name: 'notifications',
+            component: () => import('@/pages/Profile/NotificationsPage.vue'),
+            meta: { title: 'Уведомления', preserveScroll: true }
+          },
+          {
+            path: 'notifications/settings',
             name: 'notification-settings',
             component: () => import('@/pages/Profile/NotificationSettingsPage.vue'),
             meta: { title: 'Настройки уведомлений' }
           },
+
+          /* Безопасность */
           {
             path: 'security',
             name: 'security',
@@ -110,7 +183,7 @@ const routes = [
           {
             path: 'sessions',
             name: 'my-sessions',
-            component: () => import('@/pages/Profile/MySessionsPage.vue'),
+            component: () => import('@/pages/Profile/SessionsPage.vue'),
             meta: { title: 'Активные сессии' }
           }
         ]
@@ -124,7 +197,7 @@ const routes = [
         meta: { title: 'Чаты', requiresAuth: true, preserveScroll: true }
       },
       {
-        path: 'chat/:id',
+        path: `chat/${ID}`,
         name: 'chat-detail',
         component: () => import('@/pages/Chat/ChatPage.vue'),
         props: true,
@@ -139,16 +212,32 @@ const routes = [
         meta: { title: 'Поддержка' }
       },
       {
-        path: 'feedback/:id',
+        path: `feedback/${ID}`,
         name: 'feedback-detail',
         component: () => import('@/pages/Feedback/FeedbackDetailsPage.vue'),
         props: true,
         meta: { title: 'Обращение', requiresAuth: true }
+      },
+
+      /* ---------- Правовое ---------- */
+      {
+        path: 'terms',
+        name: 'terms',
+        component: () => import('@/pages/Legal/TermsPage.vue'),
+        meta: { title: 'Пользовательское соглашение' }
+      },
+      {
+        path: 'privacy',
+        name: 'privacy',
+        component: () => import('@/pages/Legal/PrivacyPage.vue'),
+        meta: { title: 'Политика конфиденциальности' }
       }
     ]
   },
 
-  /* ---------- Auth (единый AuthLayout) ---------- */
+  /* ============================================================
+   *  Auth
+   * ============================================================ */
   {
     path: '/',
     component: AuthLayout,
@@ -172,16 +261,24 @@ const routes = [
         meta: { title: 'Подтверждение email' }
       },
       {
+        path: `verify-email/${TOKEN}`,
+        name: 'verify-email-token',
+        component: () => import('@/pages/Auth/VerifyEmailPage.vue'),
+        props: true,
+        meta: { title: 'Подтверждение email' }
+      },
+      {
         path: 'forgot-password',
         name: 'forgot-password',
         component: () => import('@/pages/Auth/ForgotPasswordPage.vue'),
         meta: { title: 'Восстановление пароля', requiresGuest: true }
       },
       {
-        path: 'reset-password',
+        path: `reset-password/${TOKEN}`,
         name: 'reset-password',
         component: () => import('@/pages/Auth/ResetPasswordPage.vue'),
-        meta: { title: 'Новый пароль', requiresGuest: true }
+        props: true,
+        meta: { title: 'Новый пароль' }
       },
       {
         path: '2fa',
@@ -198,7 +295,9 @@ const routes = [
     ]
   },
 
-  /* ---------- Админка ---------- */
+  /* ============================================================
+   *  Админка
+   * ============================================================ */
   {
     path: '/admin',
     component: AdminLayout,
@@ -211,13 +310,19 @@ const routes = [
         meta: { title: 'Админ-панель' }
       },
       {
+        path: 'analytics',
+        name: 'admin-analytics',
+        component: () => import('@/pages/Admin/AdminAnalyticsPage.vue'),
+        meta: { title: 'Аналитика', preserveScroll: true }
+      },
+      {
         path: 'users',
         name: 'admin-users',
         component: () => import('@/pages/Admin/AdminUsersPage.vue'),
         meta: { title: 'Пользователи', preserveScroll: true }
       },
       {
-        path: 'users/:id',
+        path: `users/${ID}`,
         name: 'admin-user',
         component: () => import('@/pages/Admin/AdminUserPage.vue'),
         props: true,
@@ -230,7 +335,7 @@ const routes = [
         meta: { title: 'Объявления', preserveScroll: true }
       },
       {
-        path: 'announcements/:id',
+        path: `announcements/${ID}`,
         name: 'admin-announcement',
         component: () => import('@/pages/Admin/AdminAnnouncementPage.vue'),
         props: true,
@@ -243,7 +348,7 @@ const routes = [
         meta: { title: 'Обращения', preserveScroll: true }
       },
       {
-        path: 'feedback/:id',
+        path: `feedback/${ID}`,
         name: 'admin-feedback-detail',
         component: () => import('@/pages/Admin/AdminFeedbackDetailsPage.vue'),
         props: true,
@@ -258,7 +363,9 @@ const routes = [
     ]
   },
 
-  /* ---------- Ошибки ---------- */
+  /* ============================================================
+   *  Ошибки
+   * ============================================================ */
   {
     path: '/403',
     component: EmptyLayout,
@@ -296,7 +403,9 @@ const routes = [
     ]
   },
 
-  /* ---------- Fallback 404 (с сохранением куда шёл) ---------- */
+  /* ============================================================
+   *  Fallback 404 (с сохранением исходного пути)
+   * ============================================================ */
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found-catch',
