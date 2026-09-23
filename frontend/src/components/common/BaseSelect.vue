@@ -1,5 +1,13 @@
 <script setup>
-import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue'
+import {
+  computed,
+  ref,
+  watch,
+  nextTick,
+  onMounted,
+  onBeforeUnmount,
+  useId
+} from 'vue'
 
 const props = defineProps({
   modelValue: { type: [String, Number, Array], default: '' },
@@ -15,19 +23,37 @@ const props = defineProps({
   clearable: Boolean,
   name: String,
   id: String,
-  max: { type: Number, default: 0 }
+  max: { type: Number, default: 0 },
+  /** Дополнительный offset dropdown относительно триггера */
+  offset: { type: Number, default: 6 },
+  /** Максимальная высота выпадашки (px). Может переопределяться через CSS-переменную */
+  maxHeight: { type: Number, default: 320 },
+  /** Куда телепортить. По умолчанию body */
+  teleportTo: { type: [String, Object], default: 'body' }
 })
 
 const emit = defineEmits(['update:modelValue', 'change', 'search'])
 
+/* ---------- Stable ids ---------- */
+const uid = useId?.() ?? Math.random().toString(36).slice(2, 11)
+const inputId = computed(() => props.id || `select-${uid}`)
+const listboxId = computed(() => `select-listbox-${uid}`)
+const optionId = (index) => `select-option-${uid}-${index}`
+
+/* ---------- State ---------- */
 const isOpen = ref(false)
 const searchQuery = ref('')
-const selectRef = ref(null)
+const triggerRef = ref(null)
+const dropdownRef = ref(null)
 const searchInputRef = ref(null)
+const optionsRef = ref(null)
 const activeIndex = ref(-1)
 
-const inputId = computed(() => props.id || `select-${Math.random().toString(36).slice(2, 11)}`)
+const coords = ref({ top: 0, left: 0, width: 0 })
+const resolvedPlacement = ref('bottom')
+const isPositioned = ref(false)
 
+/* ---------- Computed ---------- */
 const filteredOptions = computed(() => {
   if (!props.searchable || !searchQuery.value) return props.options
   const q = searchQuery.value.toLowerCase()
@@ -54,21 +80,81 @@ const isMaxed = computed(() =>
   && props.modelValue.length >= props.max
 )
 
-function toggleDropdown() {
-  if (props.disabled) return
-  isOpen.value = !isOpen.value
-  if (isOpen.value) {
-    searchQuery.value = ''
-    activeIndex.value = -1
-    nextTick(() => {
-      if (props.searchable && searchInputRef.value) {
-        searchInputRef.value.focus()
-      }
-    })
+/* ---------- Positioning ---------- */
+function computePosition() {
+  const trigger = triggerRef.value
+  const dropdown = dropdownRef.value
+  if (!trigger || !dropdown) return
+
+  const triggerRect = trigger.getBoundingClientRect()
+  const dropdownRect = dropdown.getBoundingClientRect()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  const spaceBelow = vh - triggerRect.bottom - props.offset
+  const spaceAbove = triggerRect.top - props.offset
+  const needed = dropdownRect.height
+
+  // Flip: если снизу не влезает и сверху места больше — открываем вверх
+  let placement = 'bottom'
+  if (spaceBelow < needed && spaceAbove > spaceBelow) {
+    placement = 'top'
   }
+
+  const top = placement === 'bottom'
+    ? triggerRect.bottom + props.offset
+    : triggerRect.top - dropdownRect.height - props.offset
+
+  // Ширина совпадает с триггером
+  const left = triggerRect.left
+  const width = triggerRect.width
+
+  coords.value = {
+    top: Math.max(8, Math.min(top, vh - dropdownRect.height - 8)),
+    left: Math.max(8, Math.min(left, vw - width - 8)),
+    width
+  }
+  resolvedPlacement.value = placement
+  isPositioned.value = true
 }
 
+function updatePosition() {
+  if (!isOpen.value) return
+  computePosition()
+}
+
+/* ---------- Open / close ---------- */
+function open() {
+  if (props.disabled || isOpen.value) return
+  isOpen.value = true
+  isPositioned.value = false
+  searchQuery.value = ''
+  activeIndex.value = -1
+
+  nextTick(() => {
+    computePosition()
+    if (props.searchable && searchInputRef.value) {
+      searchInputRef.value.focus()
+    }
+  })
+}
+
+function close() {
+  if (!isOpen.value) return
+  isOpen.value = false
+  searchQuery.value = ''
+  activeIndex.value = -1
+}
+
+function toggleDropdown() {
+  if (props.disabled) return
+  isOpen.value ? close() : open()
+}
+
+/* ---------- Selection ---------- */
 function selectOption(option) {
+  if (option?.disabled) return
+
   if (props.multiple) {
     const current = Array.isArray(props.modelValue) ? props.modelValue : []
     const index = current.indexOf(option.value)
@@ -84,7 +170,8 @@ function selectOption(option) {
   } else {
     emit('update:modelValue', option.value)
     emit('change', option.value)
-    isOpen.value = false
+    close()
+    triggerRef.value?.focus()
   }
 }
 
@@ -102,63 +189,120 @@ function isSelected(option) {
   return props.modelValue === option.value
 }
 
-function handleClickOutside(event) {
-  if (selectRef.value && !selectRef.value.contains(event.target)) {
-    isOpen.value = false
-  }
+/* ---------- Outside click ---------- */
+function handlePointerDown(event) {
+  if (!isOpen.value) return
+  const t = event.target
+  if (triggerRef.value?.contains(t)) return
+  if (dropdownRef.value?.contains(t)) return
+  close()
 }
 
-function handleKeydown(event) {
+/* ---------- Keyboard ---------- */
+function scrollActiveIntoView() {
+  const options = optionsRef.value
+  if (!options) return
+  const el = options.children[activeIndex.value]
+  el?.scrollIntoView({ block: 'nearest' })
+}
+
+function handleTriggerKeydown(event) {
   if (props.disabled) return
 
   if (!isOpen.value) {
-    if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+    if (
+      event.key === 'Enter' ||
+      event.key === ' ' ||
+      event.key === 'ArrowDown' ||
+      event.key === 'ArrowUp'
+    ) {
       event.preventDefault()
-      toggleDropdown()
+      open()
     }
     return
   }
 
+  handleMenuKeydown(event)
+}
+
+function handleMenuKeydown(event) {
   const total = filteredOptions.value.length
-  if (!total) return
 
   switch (event.key) {
     case 'ArrowDown':
       event.preventDefault()
+      if (!total) return
       activeIndex.value = activeIndex.value < total - 1 ? activeIndex.value + 1 : 0
+      nextTick(scrollActiveIntoView)
       break
     case 'ArrowUp':
       event.preventDefault()
+      if (!total) return
       activeIndex.value = activeIndex.value > 0 ? activeIndex.value - 1 : total - 1
+      nextTick(scrollActiveIntoView)
+      break
+    case 'Home':
+      event.preventDefault()
+      if (!total) return
+      activeIndex.value = 0
+      nextTick(scrollActiveIntoView)
+      break
+    case 'End':
+      event.preventDefault()
+      if (!total) return
+      activeIndex.value = total - 1
+      nextTick(scrollActiveIntoView)
       break
     case 'Enter':
       event.preventDefault()
-      if (activeIndex.value >= 0) {
+      if (activeIndex.value >= 0 && filteredOptions.value[activeIndex.value]) {
         selectOption(filteredOptions.value[activeIndex.value])
       }
       break
     case 'Escape':
       event.preventDefault()
-      isOpen.value = false
+      close()
+      triggerRef.value?.focus()
       break
-    case 'Home':
-      event.preventDefault()
-      activeIndex.value = 0
-      break
-    case 'End':
-      event.preventDefault()
-      activeIndex.value = total - 1
+    case 'Tab':
+      close()
       break
   }
 }
 
+/* ---------- Lifecycle ---------- */
+let resizeObserver = null
+
+function onWindowChange() {
+  updatePosition()
+}
+
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
+  document.addEventListener('mousedown', handlePointerDown, true)
+  window.addEventListener('resize', onWindowChange, { passive: true })
+  window.addEventListener('scroll', onWindowChange, { passive: true, capture: true })
+
+  if (typeof ResizeObserver !== 'undefined' && triggerRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      if (isOpen.value) updatePosition()
+    })
+    resizeObserver.observe(triggerRef.value)
+  }
 })
 
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handlePointerDown, true)
+  window.removeEventListener('resize', onWindowChange)
+  window.removeEventListener('scroll', onWindowChange, true)
+  resizeObserver?.disconnect()
 })
+
+/* Recompute if options change while open (высота dropdown изменилась) */
+watch(filteredOptions, () => {
+  if (isOpen.value) nextTick(updatePosition)
+})
+
+defineExpose({ open, close, toggleDropdown, isOpen })
 </script>
 
 <template>
@@ -169,15 +313,13 @@ onUnmounted(() => {
     </label>
 
     <div
-      ref="selectRef"
+      ref="triggerRef"
       class="cv-select"
-      @keydown="handleKeydown"
-      tabindex="0"
       :aria-disabled="disabled"
-      role="combobox"
-      :aria-expanded="isOpen"
+      @keydown="handleTriggerKeydown"
     >
       <div
+        :id="inputId"
         :class="[
           'cv-select__trigger',
           {
@@ -186,6 +328,14 @@ onUnmounted(() => {
             'cv-select__trigger--disabled': disabled
           }
         ]"
+        role="combobox"
+        :aria-expanded="isOpen"
+        :aria-haspopup="'listbox'"
+        :aria-controls="listboxId"
+        :aria-activedescendant="
+          isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined
+        "
+        :tabindex="disabled ? -1 : 0"
         @click="toggleDropdown"
       >
         <div class="cv-select__value">
@@ -222,8 +372,32 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <!-- Скрытый input для нативной формы / name -->
+      <input
+        v-if="name"
+        type="hidden"
+        :name="name"
+        :value="multiple ? (modelValue || []).join(',') : modelValue"
+      />
+    </div>
+
+    <Teleport :to="teleportTo">
       <Transition name="cv-select">
-        <div v-if="isOpen" class="cv-select__dropdown">
+        <div
+          v-if="isOpen"
+          ref="dropdownRef"
+          class="cv-select__dropdown"
+          :class="`cv-select__dropdown--${resolvedPlacement}`"
+          :style="{
+            position: 'fixed',
+            top: coords.top + 'px',
+            left: coords.left + 'px',
+            width: coords.width + 'px',
+            maxHeight: maxHeight + 'px',
+            visibility: isPositioned ? 'visible' : 'hidden'
+          }"
+          @keydown="handleMenuKeydown"
+        >
           <div class="cv-select__glow" aria-hidden="true"></div>
           <div class="cv-select__carbon" aria-hidden="true"></div>
 
@@ -245,20 +419,28 @@ onUnmounted(() => {
               />
             </div>
 
-            <ul class="cv-select__options" role="listbox">
+            <ul
+              ref="optionsRef"
+              :id="listboxId"
+              class="cv-select__options"
+              role="listbox"
+              :aria-multiselectable="multiple"
+            >
               <li
                 v-for="(option, index) in filteredOptions"
+                :id="optionId(index)"
                 :key="option.value"
                 :class="[
                   'cv-select__option',
                   {
                     'cv-select__option--selected': isSelected(option),
                     'cv-select__option--active': index === activeIndex,
-                    'cv-select__option--disabled': isMaxed && !isSelected(option)
+                    'cv-select__option--disabled': (isMaxed && !isSelected(option)) || option.disabled
                   }
                 ]"
                 role="option"
                 :aria-selected="isSelected(option)"
+                :aria-disabled="option.disabled || (isMaxed && !isSelected(option))"
                 @click="selectOption(option)"
                 @mouseenter="activeIndex = index"
               >
@@ -299,7 +481,7 @@ onUnmounted(() => {
           </div>
         </div>
       </Transition>
-    </div>
+    </Teleport>
 
     <p v-if="error" class="cv-select__error">{{ error }}</p>
     <p v-else-if="hint" class="cv-select__hint">{{ hint }}</p>
@@ -459,13 +641,10 @@ onUnmounted(() => {
   color: #E8D5A0;
 }
 
+/* Меню — fixed, координаты inline. */
 .cv-select__dropdown {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 50;
-  max-height: 320px;
+  position: fixed;
+  z-index: 1100;
   display: flex;
   flex-direction: column;
   background:
@@ -479,6 +658,7 @@ onUnmounted(() => {
     0 0 60px rgba(201, 169, 97, 0.08);
   overflow: hidden;
   isolation: isolate;
+  box-sizing: border-box;
 }
 
 .cv-select__dropdown::before {
@@ -498,6 +678,12 @@ onUnmounted(() => {
   z-index: 2;
 }
 
+/* Для верхнего раскрытия — линия снизу и скругления/анимация */
+.cv-select__dropdown--top::before {
+  top: auto;
+  bottom: 0;
+}
+
 .cv-select__glow {
   position: absolute;
   top: -100px;
@@ -510,6 +696,11 @@ onUnmounted(() => {
   pointer-events: none;
   z-index: 0;
   opacity: 0.7;
+}
+
+.cv-select__dropdown--top .cv-select__glow {
+  top: auto;
+  bottom: -100px;
 }
 
 .cv-select__carbon {
@@ -554,6 +745,7 @@ onUnmounted(() => {
   padding: 10px 14px;
   border-bottom: 1px solid rgba(201, 169, 97, 0.12);
   background: rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
 }
 
 .cv-select__search-icon {
@@ -587,6 +779,7 @@ onUnmounted(() => {
   list-style: none;
   scrollbar-width: thin;
   scrollbar-color: rgba(201, 169, 97, 0.3) transparent;
+  min-height: 0;
 }
 
 .cv-select__options::-webkit-scrollbar {
@@ -646,6 +839,7 @@ onUnmounted(() => {
 .cv-select__option--disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  pointer-events: none;
 }
 
 .cv-select__option-check {
@@ -721,6 +915,7 @@ onUnmounted(() => {
   padding: 10px 14px;
   border-top: 1px solid rgba(201, 169, 97, 0.12);
   background: rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 }
 
 .cv-select__footer-count {
@@ -770,13 +965,19 @@ onUnmounted(() => {
 
 .cv-select-enter-active,
 .cv-select-leave-active {
-  transition: all 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
+/* Анимация зависит от направления раскрытия */
 .cv-select-enter-from,
 .cv-select-leave-to {
   opacity: 0;
   transform: translateY(-8px) scale(0.97);
+}
+
+.cv-select__dropdown--top.cv-select-enter-from,
+.cv-select__dropdown--top.cv-select-leave-to {
+  transform: translateY(8px) scale(0.97);
 }
 
 @media (max-width: 640px) {
@@ -788,10 +989,6 @@ onUnmounted(() => {
   .cv-select__tag {
     font-size: 12px;
     padding: 2px 8px;
-  }
-
-  .cv-select__dropdown {
-    max-height: 280px;
   }
 
   .cv-select__option {

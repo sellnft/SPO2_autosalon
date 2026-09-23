@@ -1,4 +1,5 @@
 <script setup>
+import { onMounted, onBeforeUnmount, ref, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AppLogo from './AppLogo.vue'
@@ -7,6 +8,10 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const emit = defineEmits(['close'])
+
+const drawerRef = ref(null)
+const closeBtnRef = ref(null)
+const previousActiveElement = ref(null)
 
 const menuItems = [
   { label: 'Главная', to: '/', icon: 'home' },
@@ -38,144 +43,235 @@ function handleItemClick(item) {
   }
   emit('close')
 }
+
+function requestClose() {
+  emit('close')
+}
+
+/* ---------- Escape ---------- */
+function handleKeydown(e) {
+  if (e.key === 'Escape') {
+    e.stopPropagation()
+    requestClose()
+    return
+  }
+
+  /* ---------- Focus trap ---------- */
+  if (e.key === 'Tab' && drawerRef.value) {
+    const focusable = drawerRef.value.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    if (!focusable.length) return
+
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    const active = document.activeElement
+
+    if (e.shiftKey && active === first) {
+      e.preventDefault()
+      last.focus()
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault()
+      first.focus()
+    }
+  }
+}
+
+/* ---------- Body scroll lock ---------- */
+let previousBodyOverflow = ''
+let previousBodyPaddingRight = ''
+
+function lockBodyScroll() {
+  previousBodyOverflow = document.body.style.overflow
+  previousBodyPaddingRight = document.body.style.paddingRight
+
+  // Компенсация скроллбара, чтобы не «дёргался» layout при скрытии overflow
+  const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth
+  if (scrollbarWidth > 0) {
+    document.body.style.paddingRight = `${scrollbarWidth}px`
+  }
+  document.body.style.overflow = 'hidden'
+}
+
+function unlockBodyScroll() {
+  document.body.style.overflow = previousBodyOverflow
+  document.body.style.paddingRight = previousBodyPaddingRight
+}
+
+onMounted(() => {
+  previousActiveElement.value = document.activeElement
+
+  lockBodyScroll()
+  document.addEventListener('keydown', handleKeydown)
+
+  nextTick(() => {
+    closeBtnRef.value?.focus()
+  })
+})
+
+onBeforeUnmount(() => {
+  unlockBodyScroll()
+  document.removeEventListener('keydown', handleKeydown)
+
+  // Возврат фокуса на элемент, с которого открыли меню
+  if (previousActiveElement.value && typeof previousActiveElement.value.focus === 'function') {
+    previousActiveElement.value.focus()
+  }
+})
 </script>
 
 <template>
-  <div class="cv-menu">
-    <div class="cv-menu__overlay" @click="emit('close')"></div>
+  <Teleport to="body">
+    <div
+      class="cv-menu"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Мобильное меню"
+    >
+      <div class="cv-menu__overlay" @click="requestClose"></div>
 
-    <aside class="cv-menu__drawer">
-      <div class="cv-menu__glow" aria-hidden="true"></div>
-      <div class="cv-menu__carbon" aria-hidden="true"></div>
+      <aside ref="drawerRef" class="cv-menu__drawer">
+        <div class="cv-menu__glow" aria-hidden="true"></div>
+        <div class="cv-menu__carbon" aria-hidden="true"></div>
 
-      <header class="cv-menu__header">
-        <AppLogo size="sm" />
-        <button class="cv-menu__close" aria-label="Закрыть" @click="emit('close')">
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-            <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </button>
-      </header>
-
-      <nav class="cv-menu__nav">
-        <section class="cv-menu__section">
-          <p class="cv-menu__section-title">Навигация</p>
-
+        <header class="cv-menu__header">
+          <AppLogo size="sm" />
           <button
-            v-for="item in menuItems"
-            :key="item.label"
-            class="cv-menu__item"
-            @click="handleItemClick(item)"
+            ref="closeBtnRef"
+            class="cv-menu__close"
+            type="button"
+            aria-label="Закрыть"
+            @click="requestClose"
           >
-            <span class="cv-menu__item-icon" aria-hidden="true">
-              <svg v-if="item.icon === 'home'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 10.5L12 3l9 7.5"/>
-                <path d="M5 9.5V21h14V9.5"/>
-                <path d="M9.5 21V14h5v7"/>
-              </svg>
-              <svg v-else-if="item.icon === 'car'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 13l1.7-4.5A2 2 0 0 1 8.6 7h6.8a2 2 0 0 1 1.9 1.5L19 13"/>
-                <path d="M4 13h16v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5z"/>
-                <circle cx="7.5" cy="15.5" r="0.9" fill="currentColor"/>
-                <circle cx="16.5" cy="15.5" r="0.9" fill="currentColor"/>
-              </svg>
-              <svg v-else-if="item.icon === 'chat'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8z"/>
-                <path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/>
-              </svg>
-            </span>
-            <span class="cv-menu__item-label">{{ item.label }}</span>
-            <span class="cv-menu__item-arrow" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+              <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
           </button>
-        </section>
+        </header>
 
-        <section class="cv-menu__section">
-          <p class="cv-menu__section-title">
-            {{ authStore.isAuthenticated ? 'Аккаунт' : 'Гостям' }}
-          </p>
+        <nav class="cv-menu__nav">
+          <section class="cv-menu__section">
+            <p class="cv-menu__section-title">Навигация</p>
 
-          <button
-            v-for="item in (authStore.isAuthenticated ? authItems : guestItems)"
-            :key="item.label"
-            class="cv-menu__item"
-            @click="handleItemClick(item)"
-          >
-            <span class="cv-menu__item-icon" aria-hidden="true">
-              <svg v-if="item.icon === 'user'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="8" r="4"/>
-                <path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>
-              </svg>
-              <svg v-else-if="item.icon === 'list'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
-              </svg>
-              <svg v-else-if="item.icon === 'heart'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 20.5l-1.5-1.36C5.4 14.36 3 12.28 3 9.5 3 7 5 5 7.5 5c1.54 0 3.04.83 3.5 2.36C11.46 5.83 12.96 5 14.5 5 17 5 19 7 19 9.5c0 2.78-2.4 4.86-7.5 9.64L12 20.5z"/>
-              </svg>
-              <svg v-else-if="item.icon === 'chat'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8z"/>
-              </svg>
-              <svg v-else-if="item.icon === 'star'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2.5l3 6.5 7 1-5 5 1.2 7L12 18.8 5.8 22l1.2-7-5-5 7-1 3-6.5z"/>
-              </svg>
-              <svg v-else-if="item.icon === 'settings'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"/>
-                <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
-              </svg>
-              <svg v-else-if="item.icon === 'shield'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2.5l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10v-6l8-3z"/>
-                <path d="M9 12l2 2 4-4"/>
-              </svg>
-              <svg v-else-if="item.icon === 'login'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                <path d="M10 17l5-5-5-5"/>
-                <path d="M15 12H3"/>
-              </svg>
-              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="8.5" cy="7" r="4"/>
-                <path d="M20 8v6M23 11h-6"/>
-              </svg>
-            </span>
-            <span class="cv-menu__item-label">{{ item.label }}</span>
-            <span class="cv-menu__item-arrow" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
-          </button>
+            <button
+              v-for="item in menuItems"
+              :key="item.label"
+              type="button"
+              class="cv-menu__item"
+              @click="handleItemClick(item)"
+            >
+              <span class="cv-menu__item-icon" aria-hidden="true">
+                <svg v-if="item.icon === 'home'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M3 10.5L12 3l9 7.5"/>
+                  <path d="M5 9.5V21h14V9.5"/>
+                  <path d="M9.5 21V14h5v7"/>
+                </svg>
+                <svg v-else-if="item.icon === 'car'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 13l1.7-4.5A2 2 0 0 1 8.6 7h6.8a2 2 0 0 1 1.9 1.5L19 13"/>
+                  <path d="M4 13h16v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5z"/>
+                  <circle cx="7.5" cy="15.5" r="0.9" fill="currentColor"/>
+                  <circle cx="16.5" cy="15.5" r="0.9" fill="currentColor"/>
+                </svg>
+                <svg v-else-if="item.icon === 'chat'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8z"/>
+                  <path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/>
+                </svg>
+              </span>
+              <span class="cv-menu__item-label">{{ item.label }}</span>
+              <span class="cv-menu__item-arrow" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </button>
+          </section>
 
-          <button
-            v-if="authStore.isAuthenticated"
-            class="cv-menu__item cv-menu__item--danger"
-            @click="handleItemClick({ action: 'logout' })"
-          >
-            <span class="cv-menu__item-icon" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                <path d="M16 17l5-5-5-5"/>
-                <path d="M21 12H9"/>
-              </svg>
-            </span>
-            <span class="cv-menu__item-label">Выйти</span>
-            <span class="cv-menu__item-arrow" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
-          </button>
-        </section>
-      </nav>
+          <section class="cv-menu__section">
+            <p class="cv-menu__section-title">
+              {{ authStore.isAuthenticated ? 'Аккаунт' : 'Гостям' }}
+            </p>
 
-      <footer class="cv-menu__footer">
-        <span class="cv-menu__footer-text">CarVibe © 2026</span>
-        <span class="cv-menu__footer-mark">premium auto</span>
-      </footer>
-    </aside>
-  </div>
+            <button
+              v-for="item in (authStore.isAuthenticated ? authItems : guestItems)"
+              :key="item.label"
+              type="button"
+              class="cv-menu__item"
+              @click="handleItemClick(item)"
+            >
+              <span class="cv-menu__item-icon" aria-hidden="true">
+                <svg v-if="item.icon === 'user'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>
+                </svg>
+                <svg v-else-if="item.icon === 'list'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+                </svg>
+                <svg v-else-if="item.icon === 'heart'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20.5l-1.5-1.36C5.4 14.36 3 12.28 3 9.5 3 7 5 5 7.5 5c1.54 0 3.04.83 3.5 2.36C11.46 5.83 12.96 5 14.5 5 17 5 19 7 19 9.5c0 2.78-2.4 4.86-7.5 9.64L12 20.5z"/>
+                </svg>
+                <svg v-else-if="item.icon === 'chat'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8z"/>
+                </svg>
+                <svg v-else-if="item.icon === 'star'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2.5l3 6.5 7 1-5 5 1.2 7L12 18.8 5.8 22l1.2-7-5-5 7-1 3-6.5z"/>
+                </svg>
+                <svg v-else-if="item.icon === 'settings'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+                </svg>
+                <svg v-else-if="item.icon === 'shield'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2.5l8 3v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10v-6l8-3z"/>
+                  <path d="M9 12l2 2 4-4"/>
+                </svg>
+                <svg v-else-if="item.icon === 'login'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                  <path d="M10 17l5-5-5-5"/>
+                  <path d="M15 12H3"/>
+                </svg>
+                <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="8.5" cy="7" r="4"/>
+                  <path d="M20 8v6M23 11h-6"/>
+                </svg>
+              </span>
+              <span class="cv-menu__item-label">{{ item.label }}</span>
+              <span class="cv-menu__item-arrow" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </button>
+
+            <button
+              v-if="authStore.isAuthenticated"
+              type="button"
+              class="cv-menu__item cv-menu__item--danger"
+              @click="handleItemClick({ action: 'logout' })"
+            >
+              <span class="cv-menu__item-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <path d="M16 17l5-5-5-5"/>
+                  <path d="M21 12H9"/>
+                </svg>
+              </span>
+              <span class="cv-menu__item-label">Выйти</span>
+              <span class="cv-menu__item-arrow" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                  <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </button>
+          </section>
+        </nav>
+
+        <footer class="cv-menu__footer">
+          <span class="cv-menu__footer-text">CarVibe © 2026</span>
+          <span class="cv-menu__footer-mark">premium auto</span>
+        </footer>
+      </aside>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -194,7 +290,10 @@ function handleItemClick(item) {
 
   position: fixed;
   inset: 0;
-  z-index: 300;
+  /* Выше AppHeader и AdminHeader (у них 1000) */
+  z-index: 1100;
+  /* Защита от горизонтального overflow при анимации slide-in */
+  overflow: hidden;
 }
 
 .cv-menu__overlay {
@@ -223,6 +322,11 @@ function handleItemClick(item) {
   animation: cvSlideIn 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
   overflow: hidden;
   isolation: isolate;
+  /* iOS safe-area */
+  padding-top: env(safe-area-inset-top, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  box-sizing: border-box;
 }
 
 @keyframes cvFadeIn {
@@ -282,6 +386,7 @@ function handleItemClick(item) {
   gap: 12px;
   padding: 22px 20px 20px;
   border-bottom: 1px solid var(--cv-border);
+  flex-shrink: 0;
 }
 
 .cv-menu__close {
@@ -306,6 +411,11 @@ function handleItemClick(item) {
   transform: rotate(90deg);
 }
 
+.cv-menu__close:focus-visible {
+  outline: 2px solid var(--cv-bronze);
+  outline-offset: 2px;
+}
+
 .cv-menu__nav {
   position: relative;
   z-index: 1;
@@ -314,6 +424,7 @@ function handleItemClick(item) {
   padding: 20px 14px 12px;
   scrollbar-width: thin;
   scrollbar-color: rgba(201, 169, 97, 0.3) transparent;
+  min-height: 0;
 }
 
 .cv-menu__nav::-webkit-scrollbar { width: 6px; }
@@ -369,13 +480,16 @@ function handleItemClick(item) {
   pointer-events: none;
 }
 
-.cv-menu__item:hover {
+.cv-menu__item:hover,
+.cv-menu__item:focus-visible {
   color: var(--cv-bronze-light);
   border-color: rgba(201, 169, 97, 0.2);
   transform: translateX(2px);
+  outline: none;
 }
 
-.cv-menu__item:hover::before {
+.cv-menu__item:hover::before,
+.cv-menu__item:focus-visible::before {
   opacity: 1;
 }
 
@@ -397,7 +511,8 @@ function handleItemClick(item) {
   transition: all 0.25s ease;
 }
 
-.cv-menu__item:hover .cv-menu__item-icon {
+.cv-menu__item:hover .cv-menu__item-icon,
+.cv-menu__item:focus-visible .cv-menu__item-icon {
   background: rgba(201, 169, 97, 0.12);
   border-color: rgba(201, 169, 97, 0.3);
   color: var(--cv-bronze-light);
@@ -422,7 +537,8 @@ function handleItemClick(item) {
   opacity: 0.5;
 }
 
-.cv-menu__item:hover .cv-menu__item-arrow {
+.cv-menu__item:hover .cv-menu__item-arrow,
+.cv-menu__item:focus-visible .cv-menu__item-arrow {
   color: var(--cv-bronze-light);
   transform: translateX(2px);
   opacity: 1;
@@ -432,22 +548,26 @@ function handleItemClick(item) {
   color: rgba(232, 168, 138, 0.85);
 }
 
-.cv-menu__item--danger:hover {
+.cv-menu__item--danger:hover,
+.cv-menu__item--danger:focus-visible {
   color: #E8A88A;
   border-color: rgba(184, 119, 85, 0.35);
 }
 
-.cv-menu__item--danger:hover::before {
+.cv-menu__item--danger:hover::before,
+.cv-menu__item--danger:focus-visible::before {
   background: linear-gradient(135deg, rgba(184, 119, 85, 0.15), rgba(184, 119, 85, 0.04));
 }
 
-.cv-menu__item--danger:hover .cv-menu__item-icon {
+.cv-menu__item--danger:hover .cv-menu__item-icon,
+.cv-menu__item--danger:focus-visible .cv-menu__item-icon {
   background: rgba(184, 119, 85, 0.15);
   border-color: rgba(184, 119, 85, 0.4);
   color: #E8A88A;
 }
 
-.cv-menu__item--danger:hover .cv-menu__item-arrow {
+.cv-menu__item--danger:hover .cv-menu__item-arrow,
+.cv-menu__item--danger:focus-visible .cv-menu__item-arrow {
   color: #E8A88A;
 }
 
@@ -460,6 +580,7 @@ function handleItemClick(item) {
   padding: 16px 24px calc(env(safe-area-inset-bottom, 0) + 18px);
   border-top: 1px solid var(--cv-border);
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.3), transparent);
+  flex-shrink: 0;
 }
 
 .cv-menu__footer-text {

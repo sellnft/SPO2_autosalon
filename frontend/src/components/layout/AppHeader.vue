@@ -69,8 +69,12 @@ onUnmounted(() => {
 
 <template>
   <header class="cv-header" :class="{ 'cv-header--scrolled': isScrolled }">
-    <div class="cv-header__glow" aria-hidden="true"></div>
-    <div class="cv-header__carbon" aria-hidden="true"></div>
+    <!-- Изолированный слой фона: забирает overflow:hidden на себя,
+         чтобы glow/carbon не вылезали за пределы шапки. -->
+    <div class="cv-header__bg" aria-hidden="true">
+      <div class="cv-header__glow"></div>
+      <div class="cv-header__carbon"></div>
+    </div>
 
     <div class="cv-header__container">
       <RouterLink to="/" class="cv-header__logo" aria-label="CarVibe — на главную">
@@ -143,8 +147,8 @@ onUnmounted(() => {
           </svg>
         </RouterLink>
 
-        <NotificationBell v-if="isAuthenticated" />
-        <UserMenu v-if="isAuthenticated" />
+        <NotificationBell v-if="isAuthenticated" class="cv-header__popover" />
+        <UserMenu v-if="isAuthenticated" class="cv-header__popover" />
 
         <div v-else class="cv-header__auth">
           <BaseButton size="sm" variant="ghost" @click="router.push('/login')">
@@ -173,10 +177,14 @@ onUnmounted(() => {
 
     <div class="cv-header__accent-line" aria-hidden="true"></div>
 
-    <MobileMenu
-      v-if="isMobileMenuOpen"
-      @close="isMobileMenuOpen = false"
-    />
+    <!-- MobileMenu телепортим в body, чтобы fixed работал корректно
+         и не ломался о backdrop-filter родителя. -->
+    <Teleport to="body">
+      <MobileMenu
+        v-if="isMobileMenuOpen"
+        @close="isMobileMenuOpen = false"
+      />
+    </Teleport>
   </header>
 </template>
 
@@ -194,19 +202,33 @@ onUnmounted(() => {
 
   position: sticky;
   top: 0;
-  z-index: 100;
+  /* Явный stacking context поверх контента страницы.
+     Достаточно высокий, чтобы перекрывать любые секции. */
+  z-index: 1000;
   background: linear-gradient(180deg, rgba(18, 18, 21, 0.92) 0%, rgba(10, 10, 12, 0.88) 100%);
   backdrop-filter: blur(20px) saturate(140%);
   -webkit-backdrop-filter: blur(20px) saturate(140%);
   border-bottom: 1px solid var(--cv-border);
   color: var(--cv-text);
-  overflow: hidden;
+  /* ВАЖНО: не hidden — иначе выпадашки обрезаются.
+     Обрезку фона делает .cv-header__bg ниже. */
+  overflow: visible;
   isolation: isolate;
   transition: box-shadow 0.3s ease;
 }
 
 .cv-header--scrolled {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Изолированный слой фона — вот он обрезает декоративные элементы. */
+.cv-header__bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
 }
 
 .cv-header__glow {
@@ -220,14 +242,12 @@ onUnmounted(() => {
   background: radial-gradient(ellipse, rgba(201, 169, 97, 0.16), transparent 70%);
   filter: blur(80px);
   pointer-events: none;
-  z-index: 0;
 }
 
 .cv-header__carbon {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
   opacity: 0.35;
   background-image:
     repeating-linear-gradient(
@@ -326,6 +346,7 @@ onUnmounted(() => {
   position: relative;
   display: flex;
   align-items: center;
+  z-index: 20;
 }
 
 .cv-header__icon-btn {
@@ -373,7 +394,7 @@ onUnmounted(() => {
     0 12px 40px rgba(0, 0, 0, 0.6),
     0 0 0 3px rgba(201, 169, 97, 0.08),
     0 0 32px rgba(201, 169, 97, 0.15);
-  z-index: 10;
+  z-index: 30;
 }
 
 .cv-header__search-icon {
@@ -432,6 +453,16 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+  position: relative;
+  z-index: 20;
+}
+
+/* Общий класс-хак для выпадающих элементов внутри actions.
+   Гарантирует, что popover'ы UserMenu и NotificationBell
+   окажутся над контентом страницы. */
+.cv-header__popover {
+  position: relative;
+  z-index: 30;
 }
 
 .cv-header__auth {
@@ -477,9 +508,11 @@ onUnmounted(() => {
   z-index: 2;
 }
 
+/* Transition для поиска. Убрал transform из keyframes,
+   чтобы не конфликтовало с translateY(-50%) на desktop. */
 .cv-search-enter-active,
 .cv-search-leave-active {
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .cv-search-enter-from,
@@ -510,7 +543,7 @@ onUnmounted(() => {
     gap: 8px;
   }
 
-  .cv-header__glow {
+  .cv-header__bg .cv-header__glow {
     width: 400px;
     height: 200px;
   }
@@ -526,6 +559,8 @@ onUnmounted(() => {
     left: 0;
     right: 0;
     width: 100%;
+    /* На mobile центрирование translateY(-50%) не нужно,
+       форма прибита к верхней кромке. */
     transform: none;
     border-radius: 0;
     border-left: none;
@@ -533,6 +568,14 @@ onUnmounted(() => {
     border-top: none;
     padding: 0 16px;
     box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+  }
+
+  /* На mobile keyframes тоже без translateY, иначе форма прыгает. */
+  .cv-search-enter-from,
+  .cv-search-leave-to {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
   }
 
   .cv-header__search-input {
@@ -550,12 +593,6 @@ onUnmounted(() => {
   .cv-header__icon-btn {
     width: 42px;
     height: 42px;
-  }
-
-  .cv-search-enter-from,
-  .cv-search-leave-to {
-    opacity: 0;
-    transform: translateY(-8px);
   }
 }
 </style>

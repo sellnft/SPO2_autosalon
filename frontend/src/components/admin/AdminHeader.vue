@@ -38,8 +38,12 @@ function handleSelect(item) {
 
 <template>
   <header class="cv-aheader">
-    <div class="cv-aheader__glow" aria-hidden="true"></div>
-    <div class="cv-aheader__carbon" aria-hidden="true"></div>
+    <!-- Изолированный слой фона: забирает overflow:hidden на себя.
+         Header остаётся overflow:visible, чтобы dropdown не обрезался. -->
+    <div class="cv-aheader__bg" aria-hidden="true">
+      <div class="cv-aheader__glow"></div>
+      <div class="cv-aheader__carbon"></div>
+    </div>
 
     <div class="cv-aheader__inner">
       <button
@@ -70,33 +74,41 @@ function handleSelect(item) {
           <span class="cv-aheader__status-text">Онлайн</span>
         </div>
 
-        <BaseDropdown :items="menuItems" placement="bottom-end" @select="handleSelect">
-          <template #trigger>
-            <button type="button" class="cv-aheader__user">
-              <span class="cv-aheader__avatar">
-                <span class="cv-aheader__avatar-inner">{{ userInitial }}</span>
-                <span class="cv-aheader__avatar-dot" aria-hidden="true"></span>
-              </span>
-
-              <span class="cv-aheader__user-info">
-                <span class="cv-aheader__user-name">{{ user?.name || 'Администратор' }}</span>
-                <span class="cv-aheader__user-role">
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2l2.5 2 3.5-.5L19.5 7l3 1.5-.5 3.5L24 14.5 22 17l.5 3.5-3 1.5-1.5 3-3.5-.5L12 26l-2.5-2-3.5.5L4.5 21.5 1.5 20l.5-3.5L0 14l2-2.5L1.5 8l3-1.5L6 3.5 9.5 4z" transform="scale(0.85) translate(2 2)"/>
-                    <path d="M9 12l2 2 4-4"/>
-                  </svg>
-                  Администратор
+        <!-- Обёртка с явным z-index: гарантирует, что popover BaseDropdown
+             окажется выше accent-line и inner-слоя header'а. -->
+        <div class="cv-aheader__popover">
+          <BaseDropdown
+            :items="menuItems"
+            placement="bottom-end"
+            @select="handleSelect"
+          >
+            <template #trigger>
+              <button type="button" class="cv-aheader__user">
+                <span class="cv-aheader__avatar">
+                  <span class="cv-aheader__avatar-inner">{{ userInitial }}</span>
+                  <span class="cv-aheader__avatar-dot" aria-hidden="true"></span>
                 </span>
-              </span>
 
-              <span class="cv-aheader__chevron" aria-hidden="true">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 9l6 6 6-6"/>
-                </svg>
-              </span>
-            </button>
-          </template>
-        </BaseDropdown>
+                <span class="cv-aheader__user-info">
+                  <span class="cv-aheader__user-name">{{ user?.name || 'Администратор' }}</span>
+                  <span class="cv-aheader__user-role">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2l2.5 2 3.5-.5L19.5 7l3 1.5-.5 3.5L24 14.5 22 17l.5 3.5-3 1.5-1.5 3-3.5-.5L12 26l-2.5-2-3.5.5L4.5 21.5 1.5 20l.5-3.5L0 14l2-2.5L1.5 8l3-1.5L6 3.5 9.5 4z" transform="scale(0.85) translate(2 2)"/>
+                      <path d="M9 12l2 2 4-4"/>
+                    </svg>
+                    Администратор
+                  </span>
+                </span>
+
+                <span class="cv-aheader__chevron" aria-hidden="true">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 9l6 6 6-6"/>
+                  </svg>
+                </span>
+              </button>
+            </template>
+          </BaseDropdown>
+        </div>
       </div>
     </div>
 
@@ -108,7 +120,9 @@ function handleSelect(item) {
 .cv-aheader {
   position: sticky;
   top: 0;
-  z-index: 40;
+  /* Достаточно высоко, чтобы перекрывать сайдбар, таблицы и т.п.
+     Если в проекте есть элементы с z-index > 1000 — подними это значение. */
+  z-index: 1000;
   height: 68px;
   background:
     linear-gradient(180deg, rgba(28, 24, 18, 0.6) 0%, rgba(15, 13, 10, 0.75) 100%),
@@ -117,7 +131,19 @@ function handleSelect(item) {
   -webkit-backdrop-filter: blur(20px) saturate(140%);
   border-bottom: 1px solid rgba(201, 169, 97, 0.16);
   isolation: isolate;
+  /* ВАЖНО: visible, иначе dropdown обрезается.
+     Обрезку декоративного фона делает .cv-aheader__bg ниже. */
+  overflow: visible;
+}
+
+/* Изолированный слой фона — вот он обрезает glow и carbon. */
+.cv-aheader__bg {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
 }
 
 .cv-aheader__glow {
@@ -130,7 +156,6 @@ function handleSelect(item) {
   background: radial-gradient(circle, rgba(201, 169, 97, 0.16), transparent 70%);
   filter: blur(70px);
   pointer-events: none;
-  z-index: 0;
   opacity: 0.75;
 }
 
@@ -138,7 +163,6 @@ function handleSelect(item) {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 0;
   opacity: 0.3;
   background-image:
     repeating-linear-gradient(
@@ -245,6 +269,8 @@ function handleSelect(item) {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 20;
 }
 
 .cv-aheader__status {
@@ -278,6 +304,12 @@ function handleSelect(item) {
 
 .cv-aheader__status-text {
   white-space: nowrap;
+}
+
+/* Обёртка popover'а: поднимает BaseDropdown над inner и accent-line. */
+.cv-aheader__popover {
+  position: relative;
+  z-index: 30;
 }
 
 .cv-aheader__user {
