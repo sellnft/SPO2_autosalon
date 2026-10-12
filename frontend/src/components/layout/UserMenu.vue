@@ -7,10 +7,12 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const menuItems = [
-  { label: 'Мой профиль', to: '/profile', icon: 'user' },
-  { label: 'Мои объявления', to: '/profile/announcements', icon: 'list' },
-  { label: 'Избранное', to: '/favourites', icon: 'heart' },
-  { label: 'Настройки', to: '/profile/edit', icon: 'settings' },
+  { label: 'Мой профиль', to: { name: 'profile' }, icon: 'user' },
+  { label: 'Мои объявления', to: { name: 'my-announcements' }, icon: 'list' },
+  { label: 'Избранное', to: { name: 'favourites' }, icon: 'heart' },
+  { label: 'Уведомления', to: { name: 'notifications' }, icon: 'bell' },
+  { label: 'Настройки уведомлений', to: { name: 'notification-settings' }, icon: 'bell-ring' },
+  { label: 'Настройки', to: { name: 'profile-edit' }, icon: 'settings' },
   { type: 'divider' },
   { label: 'Выйти', action: 'logout', danger: true, icon: 'logout' }
 ]
@@ -18,7 +20,7 @@ const menuItems = [
 function handleSelect(item) {
   if (item.action === 'logout') {
     authStore.logout()
-    router.push('/')
+    router.push({ name: 'home' })
   } else if (item.to) {
     router.push(item.to)
   }

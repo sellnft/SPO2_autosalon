@@ -1,5 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import {
+  ref,
+  computed,
+  onMounted,
+  onBeforeUnmount,
+  nextTick
+} from 'vue'
 import { useRouter } from 'vue-router'
 import { useNotificationsStore } from '@/stores/notifications'
 import NotificationItem from '@/components/notifications/NotificationItem.vue'
@@ -8,46 +14,118 @@ const router = useRouter()
 const notificationsStore = useNotificationsStore()
 
 const isOpen = ref(false)
-const dropdownRef = ref(null)
+const triggerRef = ref(null)
+const menuRef = ref(null)
+const coords = ref({ top: 0, left: 0 })
+const isPositioned = ref(false)
 
 const unreadCount = computed(() => notificationsStore.unreadCount)
-const recentNotifications = computed(() => notificationsStore.notifications.slice(0, 5))
+const recentNotifications = computed(() =>
+  notificationsStore.notifications.slice(0, 5)
+)
 
-async function toggleDropdown() {
-  isOpen.value = !isOpen.value
-  if (isOpen.value && !notificationsStore.notifications.length) {
-    await notificationsStore.fetchNotifications()
+/* ---------- Position ---------- */
+function computePosition() {
+  const trigger = triggerRef.value
+  const menu = menuRef.value
+  if (!trigger || !menu) return
+
+  const triggerRect = trigger.getBoundingClientRect()
+  const menuRect = menu.getBoundingClientRect()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  const offset = 12
+  const spaceBelow = vh - triggerRect.bottom - offset
+  const spaceAbove = triggerRect.top - offset
+  const needed = menuRect.height
+
+  let side = 'bottom'
+  if (spaceBelow < needed && spaceAbove > spaceBelow) {
+    side = 'top'
   }
+
+  let top = side === 'bottom'
+    ? triggerRect.bottom + offset
+    : triggerRect.top - menuRect.height - offset
+
+  let left = triggerRect.right - menuRect.width
+
+  left = Math.max(8, Math.min(left, vw - menuRect.width - 8))
+  top = Math.max(8, Math.min(top, vh - menuRect.height - 8))
+
+  coords.value = { top, left }
+  isPositioned.value = true
+}
+
+function updatePosition() {
+  if (isOpen.value) computePosition()
+}
+
+/* ---------- Open / close ---------- */
+function toggle() {
+  isOpen.value = !isOpen.value
+  if (isOpen.value) {
+    isPositioned.value = false
+    nextTick(computePosition)
+  }
+}
+
+function close() {
+  isOpen.value = false
 }
 
 function goToAll() {
-  isOpen.value = false
-  router.push('/profile/notifications')
+  close()
+  router.push({ name: 'notifications' })
 }
 
-function handleClickOutside(event) {
-  if (dropdownRef.value && !dropdownRef.value.contains(event.target)) {
-    isOpen.value = false
+/* ---------- Outside click ---------- */
+function handlePointerDown(e) {
+  if (!isOpen.value) return
+  const t = e.target
+  if (triggerRef.value?.contains(t)) return
+  if (menuRef.value?.contains(t)) return
+  close()
+}
+
+/* ---------- Escape ---------- */
+function handleKeydown(e) {
+  if (e.key === 'Escape' && isOpen.value) {
+    close()
+    triggerRef.value?.focus()
   }
 }
 
-onMounted(async () => {
-  document.addEventListener('click', handleClickOutside)
-  await notificationsStore.fetchNotifications()
+/* ---------- Lifecycle ---------- */
+onMounted(() => {
+  document.addEventListener('mousedown', handlePointerDown, true)
+  document.addEventListener('keydown', handleKeydown, true)
+  window.addEventListener('resize', updatePosition, { passive: true })
+  window.addEventListener('scroll', updatePosition, { passive: true, capture: true })
+
+  if (!notificationsStore.notifications.length) {
+    notificationsStore.fetchNotifications()
+  }
 })
 
-onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
+onBeforeUnmount(() => {
+  document.removeEventListener('mousedown', handlePointerDown, true)
+  document.removeEventListener('keydown', handleKeydown, true)
+  window.removeEventListener('resize', updatePosition)
+  window.removeEventListener('scroll', updatePosition, true)
 })
 </script>
 
 <template>
-  <div ref="dropdownRef" class="cv-bell">
+  <div class="cv-bell" ref="triggerRef">
     <button
       class="cv-bell__trigger"
       :class="{ 'cv-bell__trigger--active': isOpen }"
+      :aria-expanded="isOpen"
+      aria-haspopup="dialog"
       :aria-label="`Уведомления: ${unreadCount}`"
-      @click="toggleDropdown"
+      @click="toggle"
     >
       <span class="cv-bell__icon">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -61,48 +139,64 @@ onUnmounted(() => {
       </span>
     </button>
 
-    <Transition name="cv-dropdown">
-      <div v-if="isOpen" class="cv-bell__dropdown">
-        <div class="cv-bell__glow" aria-hidden="true"></div>
-        <div class="cv-bell__carbon" aria-hidden="true"></div>
+    <Teleport to="body">
+      <Transition name="cv-dropdown">
+        <div
+          v-if="isOpen"
+          ref="menuRef"
+          class="cv-bell__dropdown"
+          :style="{
+            position: 'fixed',
+            top: coords.top + 'px',
+            left: coords.left + 'px',
+            visibility: isPositioned ? 'visible' : 'hidden'
+          }"
+          role="dialog"
+          aria-label="Уведомления"
+        >
+          <div class="cv-bell__glow" aria-hidden="true"></div>
+          <div class="cv-bell__carbon" aria-hidden="true"></div>
 
-        <header class="cv-bell__header">
-          <h3 class="cv-bell__title">Уведомления</h3>
-          <span v-if="unreadCount" class="cv-bell__count">
-            {{ unreadCount }} новых
-          </span>
-        </header>
-
-        <div class="cv-bell__list">
-          <NotificationItem
-            v-for="n in recentNotifications"
-            :key="n.id"
-            :notification="n"
-            @click="isOpen = false"
-          />
-
-          <div v-if="!recentNotifications.length" class="cv-bell__empty">
-            <span class="cv-bell__empty-icon" aria-hidden="true">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
-              </svg>
+          <header class="cv-bell__header">
+            <h3 class="cv-bell__title">Уведомления</h3>
+            <span v-if="unreadCount" class="cv-bell__count">
+              {{ unreadCount }} новых
             </span>
-            <span class="cv-bell__empty-text">Нет уведомлений</span>
-            <span class="cv-bell__empty-hint">Здесь появятся оповещения о ваших объявлениях и чатах</span>
+          </header>
+
+          <div class="cv-bell__list">
+            <NotificationItem
+              v-for="n in recentNotifications"
+              :key="n.id"
+              :notification="n"
+              @click="close"
+            />
+
+            <div v-if="!recentNotifications.length" class="cv-bell__empty">
+              <span class="cv-bell__empty-icon" aria-hidden="true">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+                  <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
+                </svg>
+              </span>
+              <span class="cv-bell__empty-text">Нет уведомлений</span>
+              <span class="cv-bell__empty-hint">
+                Здесь появятся оповещения о ваших объявлениях и чатах
+              </span>
+            </div>
           </div>
+
+          <button class="cv-bell__footer" @click="goToAll">
+            <span>Все уведомления</span>
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 4l4 4-4 4"/>
+            </svg>
+          </button>
+
+          <div class="cv-bell__accent-line" aria-hidden="true"></div>
         </div>
-
-        <button class="cv-bell__footer" @click="goToAll">
-          <span>Все уведомления</span>
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 4l4 4-4 4"/>
-          </svg>
-        </button>
-
-        <div class="cv-bell__accent-line" aria-hidden="true"></div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -118,7 +212,6 @@ onUnmounted(() => {
   --cv-bronze: #C9A961;
   --cv-bronze-light: #E8D5A0;
   --cv-bronze-dark: #8B6F3F;
-  --cv-copper: #B87755;
 
   position: relative;
 }
@@ -200,9 +293,6 @@ onUnmounted(() => {
 }
 
 .cv-bell__dropdown {
-  position: absolute;
-  top: calc(100% + 12px);
-  right: 0;
   width: 400px;
   display: flex;
   flex-direction: column;
@@ -216,7 +306,7 @@ onUnmounted(() => {
     0 0 0 1px rgba(201, 169, 97, 0.06) inset,
     0 0 80px rgba(201, 169, 97, 0.1);
   overflow: hidden;
-  z-index: 50;
+  z-index: 1100;
   isolation: isolate;
 }
 
@@ -241,20 +331,8 @@ onUnmounted(() => {
   z-index: 0;
   opacity: 0.4;
   background-image:
-    repeating-linear-gradient(
-      45deg,
-      rgba(255, 255, 255, 0.012) 0px,
-      rgba(255, 255, 255, 0.012) 1px,
-      transparent 1px,
-      transparent 4px
-    ),
-    repeating-linear-gradient(
-      -45deg,
-      rgba(255, 255, 255, 0.012) 0px,
-      rgba(255, 255, 255, 0.012) 1px,
-      transparent 1px,
-      transparent 4px
-    );
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.012) 0px, rgba(255, 255, 255, 0.012) 1px, transparent 1px, transparent 4px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.012) 0px, rgba(255, 255, 255, 0.012) 1px, transparent 1px, transparent 4px);
   mask-image: radial-gradient(ellipse at top right, black 20%, transparent 80%);
   -webkit-mask-image: radial-gradient(ellipse at top right, black 20%, transparent 80%);
 }
@@ -411,14 +489,8 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
   .cv-bell__dropdown {
-    position: fixed;
-    top: 74px;
-    right: 12px;
-    left: 12px;
     width: auto;
-    max-width: 420px;
-    margin-left: auto;
-    margin-right: 0;
+    max-width: calc(100vw - 24px);
   }
 }
 </style>

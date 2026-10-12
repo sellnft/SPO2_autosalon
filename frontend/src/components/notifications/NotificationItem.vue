@@ -8,8 +8,20 @@ const props = defineProps({
   notification: {
     type: Object,
     required: true
+  },
+  /** Показывать кнопки действий (mark-read, delete) */
+  actions: {
+    type: Boolean,
+    default: false
+  },
+  /** Отключить внутренний роутинг и markAsRead — тогда всё через emit */
+  manual: {
+    type: Boolean,
+    default: false
   }
 })
+
+const emit = defineEmits(['click', 'mark-read', 'delete'])
 
 const router = useRouter()
 const notificationsStore = useNotificationsStore()
@@ -28,20 +40,52 @@ const iconType = computed(() => {
 })
 
 async function handleClick() {
-  if (!props.notification.read) {
-    await notificationsStore.markAsRead(props.notification.id)
+  if (!props.manual) {
+    if (!props.notification.read) {
+      try {
+        await notificationsStore.markAsRead(props.notification.id)
+      } catch {
+        /* стор сам покажет error */
+      }
+    }
+
+    if (props.notification.link) {
+      router.push(props.notification.link)
+    }
   }
 
-  if (props.notification.link) {
-    router.push(props.notification.link)
+  emit('click', props.notification)
+}
+
+async function handleMarkRead(e) {
+  e.stopPropagation()
+
+  if (props.manual) {
+    emit('mark-read', props.notification)
+    return
   }
+
+  try {
+    await notificationsStore.markAsRead(props.notification.id)
+  } catch {
+    /* ignore */
+  }
+}
+
+function handleDelete(e) {
+  e.stopPropagation()
+  emit('delete', props.notification)
 }
 </script>
 
 <template>
-  <button
+  <div
     :class="['cv-notif-item', { 'cv-notif-item--unread': !notification.read }]"
+    role="button"
+    tabindex="0"
     @click="handleClick"
+    @keydown.enter.prevent="handleClick"
+    @keydown.space.prevent="handleClick"
   >
     <div class="cv-notif-item__icon" :data-type="notification.type">
       <span class="cv-notif-item__emoji">{{ iconType }}</span>
@@ -53,7 +97,9 @@ async function handleClick() {
         <span v-if="!notification.read" class="cv-notif-item__dot" aria-hidden="true"></span>
       </div>
 
-      <p class="cv-notif-item__message">{{ notification.message }}</p>
+      <p class="cv-notif-item__message">
+        {{ notification.message || notification.text }}
+      </p>
 
       <p class="cv-notif-item__time">
         <span class="cv-notif-item__time-icon" aria-hidden="true">
@@ -66,15 +112,43 @@ async function handleClick() {
       </p>
     </div>
 
-    <span class="cv-notif-item__arrow" aria-hidden="true">
+    <div v-if="actions" class="cv-notif-item__actions">
+      <button
+        v-if="!notification.read"
+        type="button"
+        class="cv-notif-item__action"
+        aria-label="Отметить прочитанным"
+        title="Отметить прочитанным"
+        @click="handleMarkRead"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 8.5l5 5L20 2.5"/>
+        </svg>
+      </button>
+
+      <button
+        type="button"
+        class="cv-notif-item__action cv-notif-item__action--danger"
+        aria-label="Удалить"
+        title="Удалить"
+        @click="handleDelete"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        </svg>
+      </button>
+    </div>
+
+    <span v-else class="cv-notif-item__arrow" aria-hidden="true">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <path d="M6 4l4 4-4 4"/>
       </svg>
     </span>
-  </button>
+  </div>
 </template>
 
 <style scoped>
+/* Базовые стили — как было, плюс блок actions */
 .cv-notif-item {
   position: relative;
   display: flex;
@@ -93,9 +167,7 @@ async function handleClick() {
   overflow: hidden;
 }
 
-.cv-notif-item:last-child {
-  border-bottom: none;
-}
+.cv-notif-item:last-child { border-bottom: none; }
 
 .cv-notif-item::before {
   content: '';
@@ -107,8 +179,11 @@ async function handleClick() {
   pointer-events: none;
 }
 
-.cv-notif-item:hover::before {
-  opacity: 1;
+.cv-notif-item:hover::before { opacity: 1; }
+
+.cv-notif-item:focus-visible {
+  outline: 2px solid #C9A961;
+  outline-offset: -2px;
 }
 
 .cv-notif-item--unread {
@@ -131,9 +206,7 @@ async function handleClick() {
   background: linear-gradient(135deg, rgba(201, 169, 97, 0.14), rgba(201, 169, 97, 0.04));
 }
 
-.cv-notif-item:active {
-  transform: scale(0.995);
-}
+.cv-notif-item:active { transform: scale(0.995); }
 
 .cv-notif-item__icon {
   position: relative;
@@ -162,36 +235,13 @@ async function handleClick() {
   transform: scale(1.03);
 }
 
-.cv-notif-item__icon[data-type="chat"] {
-  background: rgba(201, 169, 97, 0.1);
-  border-color: rgba(201, 169, 97, 0.28);
-}
-
-.cv-notif-item__icon[data-type="price"] {
-  background: rgba(217, 119, 6, 0.1);
-  border-color: rgba(217, 119, 6, 0.28);
-}
-
+.cv-notif-item__icon[data-type="chat"] { background: rgba(201, 169, 97, 0.1); border-color: rgba(201, 169, 97, 0.28); }
+.cv-notif-item__icon[data-type="price"] { background: rgba(217, 119, 6, 0.1); border-color: rgba(217, 119, 6, 0.28); }
 .cv-notif-item__icon[data-type="status"],
-.cv-notif-item__icon[data-type="sold"] {
-  background: rgba(122, 154, 106, 0.12);
-  border-color: rgba(122, 154, 106, 0.3);
-}
-
-.cv-notif-item__icon[data-type="security"] {
-  background: rgba(184, 119, 85, 0.12);
-  border-color: rgba(184, 119, 85, 0.32);
-}
-
-.cv-notif-item__icon[data-type="support"] {
-  background: rgba(184, 119, 85, 0.1);
-  border-color: rgba(184, 119, 85, 0.26);
-}
-
-.cv-notif-item__icon[data-type="system"] {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-}
+.cv-notif-item__icon[data-type="sold"] { background: rgba(122, 154, 106, 0.12); border-color: rgba(122, 154, 106, 0.3); }
+.cv-notif-item__icon[data-type="security"] { background: rgba(184, 119, 85, 0.12); border-color: rgba(184, 119, 85, 0.32); }
+.cv-notif-item__icon[data-type="support"] { background: rgba(184, 119, 85, 0.1); border-color: rgba(184, 119, 85, 0.26); }
+.cv-notif-item__icon[data-type="system"] { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.1); }
 
 .cv-notif-item__content {
   position: relative;
@@ -216,13 +266,8 @@ async function handleClick() {
   transition: color 0.2s ease;
 }
 
-.cv-notif-item--unread .cv-notif-item__title {
-  color: #F5E6BC;
-}
-
-.cv-notif-item:hover .cv-notif-item__title {
-  color: #F5E6BC;
-}
+.cv-notif-item--unread .cv-notif-item__title { color: #F5E6BC; }
+.cv-notif-item:hover .cv-notif-item__title { color: #F5E6BC; }
 
 .cv-notif-item__dot {
   flex-shrink: 0;
@@ -230,23 +275,13 @@ async function handleClick() {
   height: 7px;
   border-radius: 50%;
   background: linear-gradient(135deg, #F5E6BC, #C9A961);
-  box-shadow:
-    0 0 0 3px rgba(201, 169, 97, 0.15),
-    0 0 10px rgba(201, 169, 97, 0.7);
+  box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.15), 0 0 10px rgba(201, 169, 97, 0.7);
   animation: cvNotifPulse 2.2s ease-in-out infinite;
 }
 
 @keyframes cvNotifPulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 3px rgba(201, 169, 97, 0.15),
-      0 0 10px rgba(201, 169, 97, 0.7);
-  }
-  50% {
-    box-shadow:
-      0 0 0 5px rgba(201, 169, 97, 0.08),
-      0 0 16px rgba(201, 169, 97, 0.9);
-  }
+  0%, 100% { box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.15), 0 0 10px rgba(201, 169, 97, 0.7); }
+  50% { box-shadow: 0 0 0 5px rgba(201, 169, 97, 0.08), 0 0 16px rgba(201, 169, 97, 0.9); }
 }
 
 .cv-notif-item__message {
@@ -281,6 +316,54 @@ async function handleClick() {
   flex-shrink: 0;
 }
 
+/* ACTIONS */
+.cv-notif-item__actions {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  align-self: center;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.cv-notif-item:hover .cv-notif-item__actions,
+.cv-notif-item:focus-within .cv-notif-item__actions {
+  opacity: 1;
+}
+
+.cv-notif-item__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: rgba(200, 190, 175, 0.6);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cv-notif-item__action:hover {
+  color: #E8D5A0;
+  background: rgba(201, 169, 97, 0.12);
+  border-color: rgba(201, 169, 97, 0.35);
+  transform: translateY(-1px);
+}
+
+.cv-notif-item__action:active { transform: translateY(0) scale(0.94); }
+
+.cv-notif-item__action--danger:hover {
+  color: #E8A88A;
+  background: rgba(184, 119, 85, 0.15);
+  border-color: rgba(184, 119, 85, 0.4);
+}
+
+/* ARROW (когда actions=false) */
 .cv-notif-item__arrow {
   position: relative;
   z-index: 1;
@@ -301,31 +384,13 @@ async function handleClick() {
 }
 
 @media (max-width: 640px) {
-  .cv-notif-item {
-    padding: 14px 16px;
-    gap: 12px;
-  }
-
-  .cv-notif-item__icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 11px;
-  }
-
-  .cv-notif-item__emoji {
-    font-size: 17px;
-  }
-
-  .cv-notif-item__title {
-    font-size: 13.5px;
-  }
-
-  .cv-notif-item__message {
-    font-size: 12.5px;
-  }
-
-  .cv-notif-item__arrow {
-    display: none;
-  }
+  .cv-notif-item { padding: 14px 16px; gap: 12px; }
+  .cv-notif-item__icon { width: 38px; height: 38px; border-radius: 11px; }
+  .cv-notif-item__emoji { font-size: 17px; }
+  .cv-notif-item__title { font-size: 13.5px; }
+  .cv-notif-item__message { font-size: 12.5px; }
+  .cv-notif-item__arrow { display: none; }
+  .cv-notif-item__actions { opacity: 1; }
+  .cv-notif-item__action { width: 34px; height: 34px; }
 }
 </style>

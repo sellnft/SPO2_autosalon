@@ -1,110 +1,155 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useNotificationsStore } from '@/stores/notifications'
 import { useToastStore } from '@/stores/toast'
+import NotificationList from '@/components/notifications/NotificationList.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
-import { formatDate } from '@/utils/formatDate'
+import ConfirmModal from '@/components/common/ConfirmModal.vue'
 
 defineOptions({ name: 'NotificationsPage' })
 
 const router = useRouter()
+const notificationsStore = useNotificationsStore()
 const toastStore = useToastStore()
 
-const loading = ref(true)
-const activeTab = ref('all')
-const notifications = ref([])
+/* ============================================================
+ *  Состояние страницы
+ * ============================================================ */
+const activeTab = ref('all')      // 'all' | 'unread'
+const search = ref('')
+const page = ref(1)
+const perPage = 20
+const showClearAllModal = ref(false)
 
-const tabs = computed(() => [
-  { key: 'all', label: 'Все', count: notifications.value.length },
-  { key: 'unread', label: 'Непрочитанные', count: unreadCount.value }
-])
+/* ============================================================
+ *  Store-биндинги
+ * ============================================================ */
+const allNotifications = computed(() => notificationsStore.notifications)
+const unreadCount = computed(() => notificationsStore.unreadCount)
+const totalCount = computed(() => notificationsStore.total || allNotifications.value.length)
+const loading = computed(() => notificationsStore.loading)
+const loadingMore = computed(() => notificationsStore.loadingMore)
+const mutating = computed(() => notificationsStore.mutating)
+const storeError = computed(() => notificationsStore.error)
 
-const unreadCount = computed(() =>
-  notifications.value.filter(n => !n.read).length
-)
+const hasMore = computed(() => allNotifications.value.length < totalCount.value)
 
+/* ============================================================
+ *  Фильтрация (клиентская)
+ * ============================================================ */
 const filteredNotifications = computed(() => {
+  let list = allNotifications.value
+
   if (activeTab.value === 'unread') {
-    return notifications.value.filter(n => !n.read)
+    list = list.filter(n => !n.read)
   }
-  return notifications.value
+
+  const q = search.value.trim().toLowerCase()
+  if (q) {
+    list = list.filter(n => {
+      const title = String(n.title || '').toLowerCase()
+      const text = String(n.message || n.text || '').toLowerCase()
+      return title.includes(q) || text.includes(q)
+    })
+  }
+
+  return list
 })
 
-const typeConfig = {
-  message: { icon: 'chat', accent: 'info', label: 'Сообщение' },
-  favorite: { icon: 'heart', accent: 'danger', label: 'Избранное' },
-  status: { icon: 'check', accent: 'success', label: 'Статус' },
-  system: { icon: 'info', accent: 'accent', label: 'Система' },
-  price: { icon: 'chart', accent: 'warning', label: 'Цена' }
-}
+const isFiltering = computed(() =>
+  activeTab.value !== 'all' || search.value.trim().length > 0
+)
 
-/* Демо-данные. В реальном проекте — из notifications-store */
-const demoNotifications = [
-  {
-    id: 1,
-    type: 'message',
-    title: 'Новое сообщение',
-    text: 'Анна К. написала вам по объявлению «BMW X5 2020»',
-    createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString(),
-    read: false,
-    link: '/chat'
-  },
-  {
-    id: 2,
-    type: 'favorite',
-    title: 'Ваше объявление в избранном',
-    text: 'Кто-то добавил «Toyota Camry 2019» в избранное',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-    read: false,
-    link: '/profile/announcements'
-  },
-  {
-    id: 3,
-    type: 'status',
-    title: 'Объявление одобрено',
-    text: 'Модерация одобрила ваше объявление «Audi Q7 2021»',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-    read: true,
-    link: '/profile/announcements'
-  },
-  {
-    id: 4,
-    type: 'system',
-    title: 'Обновление платформы',
-    text: 'Мы добавили проверку VIN в один клик — попробуйте',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-    read: true,
-    link: null
-  }
-]
+/* ============================================================
+ *  Загрузка
+ * ============================================================ */
+async function load({ reset = false } = {}) {
+  if (reset) page.value = 1
 
-async function loadNotifications() {
-  loading.value = true
   try {
-    // Здесь должен быть вызов API. Пока — демо-данные.
-    await new Promise(r => setTimeout(r, 400))
-    notifications.value = demoNotifications
-  } finally {
-    loading.value = false
+    await notificationsStore.fetchNotifications(
+      { page: page.value, perPage },
+      { append: !reset && page.value > 1 }
+    )
+  } catch (err) {
+    // error уже в сторе
   }
 }
 
-function markAsRead(n) {
-  if (n.read) return
-  n.read = true
+function loadMore() {
+  if (loadingMore.value || loading.value || !hasMore.value) return
+  page.value += 1
+  load()
 }
 
-function markAllAsRead() {
-  notifications.value.forEach(n => { n.read = true })
-  toastStore.success('Все уведомления прочитаны')
+/* ============================================================
+ *  Действия
+ * ============================================================ */
+async function handleItemClick(notification) {
+  // NotificationItem уже сам делает markAsRead и router.push,
+  // потому что manual=false в List. Здесь — только для логов/аналитики.
 }
 
-function handleClick(n) {
-  markAsRead(n)
-  if (n.link) router.push(n.link)
+async function handleMarkRead(notification) {
+  try {
+    await notificationsStore.markAsRead(notification.id)
+  } catch (err) {
+    toastStore.error('Не удалось отметить уведомление')
+  }
 }
 
-onMounted(loadNotifications)
+async function handleDelete(notification) {
+  try {
+    await notificationsStore.deleteNotification(notification.id)
+    toastStore.success('Уведомление удалено')
+  } catch (err) {
+    toastStore.error('Не удалось удалить уведомление')
+  }
+}
+
+async function markAllAsRead() {
+  if (!unreadCount.value) return
+  try {
+    await notificationsStore.markAllAsRead()
+    toastStore.success('Все уведомления прочитаны')
+  } catch (err) {
+    toastStore.error('Не удалось отметить все уведомления')
+  }
+}
+
+async function clearAll() {
+  try {
+    await notificationsStore.clearAll()
+    showClearAllModal.value = false
+    page.value = 1
+    toastStore.success('Все уведомления удалены')
+  } catch (err) {
+    toastStore.error('Не удалось очистить уведомления')
+  }
+}
+
+function goToSettings() {
+  router.push({ name: 'notification-settings' })
+}
+
+function resetFilters() {
+  activeTab.value = 'all'
+  search.value = ''
+}
+
+/* ============================================================
+ *  Lifecycle
+ * ============================================================ */
+onMounted(() => {
+  // Грузим только если стор ещё пуст, чтобы не дублировать запросы
+  if (!allNotifications.value.length) {
+    load({ reset: true })
+  } else {
+    // На случай, если unreadCount устарел
+    notificationsStore.fetchUnreadCount?.()
+  }
+})
 </script>
 
 <template>
@@ -118,9 +163,10 @@ onMounted(loadNotifications)
         <h1 class="cv-nf__title">Уведомления</h1>
         <p class="cv-nf__subtitle">
           <template v-if="unreadCount">
-            <strong>{{ unreadCount }}</strong> непрочитанных
+            <strong>{{ unreadCount }}</strong> непрочитанных из {{ totalCount }}
           </template>
-          <template v-else>Всё прочитано</template>
+          <template v-else-if="totalCount">Всё прочитано · {{ totalCount }} всего</template>
+          <template v-else>Здесь будут появляться важные события</template>
         </p>
       </div>
 
@@ -128,16 +174,31 @@ onMounted(loadNotifications)
         <BaseButton
           v-if="unreadCount"
           variant="outline"
+          size="sm"
+          :disabled="mutating"
           @click="markAllAsRead"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 8.5l5 5L20 2.5"/>
           </svg>
           Прочитать все
         </BaseButton>
 
-        <BaseButton variant="ghost" @click="router.push('/profile/notifications/settings')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <BaseButton
+          v-if="totalCount"
+          variant="ghost"
+          size="sm"
+          :disabled="mutating"
+          @click="showClearAllModal = true"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          </svg>
+          Очистить всё
+        </BaseButton>
+
+        <BaseButton variant="ghost" size="sm" @click="goToSettings">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
           </svg>
@@ -146,26 +207,84 @@ onMounted(loadNotifications)
       </div>
     </header>
 
-    <!-- TABS -->
-    <div class="cv-nf__tabs">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        type="button"
-        class="cv-nf__tab"
-        :class="{ 'cv-nf__tab--active': activeTab === tab.key }"
-        @click="activeTab = tab.key"
-      >
-        <span>{{ tab.label }}</span>
-        <span class="cv-nf__tab-count">{{ tab.count }}</span>
-      </button>
+    <!-- TOOLBAR -->
+    <section class="cv-nf__toolbar">
+      <div class="cv-nf__tabs">
+        <button
+          type="button"
+          class="cv-nf__tab"
+          :class="{ 'cv-nf__tab--active': activeTab === 'all' }"
+          @click="activeTab = 'all'"
+        >
+          Все
+          <span class="cv-nf__tab-count">{{ totalCount }}</span>
+        </button>
+        <button
+          type="button"
+          class="cv-nf__tab"
+          :class="{ 'cv-nf__tab--active': activeTab === 'unread' }"
+          @click="activeTab = 'unread'"
+        >
+          Непрочитанные
+          <span
+            class="cv-nf__tab-count"
+            :class="{ 'cv-nf__tab-count--accent': unreadCount > 0 }"
+          >
+            {{ unreadCount }}
+          </span>
+        </button>
+      </div>
+
+      <div class="cv-nf__search">
+        <span class="cv-nf__search-icon" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"/>
+            <path d="M20 20l-3.5-3.5"/>
+          </svg>
+        </span>
+        <input
+          v-model="search"
+          type="text"
+          class="cv-nf__search-input"
+          placeholder="Поиск по уведомлениям..."
+        />
+        <button
+          v-if="search"
+          type="button"
+          class="cv-nf__search-clear"
+          aria-label="Очистить"
+          @click="search = ''"
+        >
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 4l8 8M12 4l-8 8"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ERROR -->
+    <section v-if="storeError && !loading" class="cv-nf__error">
+      <span class="cv-nf__error-icon" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <path d="M12 8v5M12 17h.01"/>
+        </svg>
+      </span>
+      <div class="cv-nf__error-body">
+        <p class="cv-nf__error-title">Не удалось загрузить уведомления</p>
+        <p class="cv-nf__error-text">{{ storeError }}</p>
+      </div>
+      <BaseButton variant="outline" size="sm" @click="load({ reset: true })">
+        Повторить
+      </BaseButton>
+    </section>
+
+    <!-- LOADING -->
+    <div v-else-if="loading && !allNotifications.length" class="cv-nf__list">
+      <div v-for="i in 5" :key="i" class="cv-nf__skeleton"></div>
     </div>
 
-    <!-- LIST -->
-    <div v-if="loading" class="cv-nf__list">
-      <div v-for="i in 4" :key="i" class="cv-nf__skeleton"></div>
-    </div>
-
+    <!-- EMPTY -->
     <div v-else-if="!filteredNotifications.length" class="cv-nf__empty">
       <span class="cv-nf__empty-icon" aria-hidden="true">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -174,56 +293,53 @@ onMounted(loadNotifications)
         </svg>
       </span>
       <p class="cv-nf__empty-title">
-        {{ activeTab === 'unread' ? 'Нет непрочитанных уведомлений' : 'Уведомлений пока нет' }}
+        <template v-if="isFiltering">Ничего не найдено</template>
+        <template v-else>Уведомлений пока нет</template>
       </p>
-      <p class="cv-nf__empty-hint">Здесь будут появляться важные события и сообщения</p>
+      <p class="cv-nf__empty-hint">
+        <template v-if="isFiltering">Попробуйте изменить фильтр или запрос</template>
+        <template v-else>Как только появятся события — они отобразятся здесь</template>
+      </p>
+      <BaseButton v-if="isFiltering" variant="outline" size="sm" @click="resetFilters">
+        Сбросить фильтры
+      </BaseButton>
     </div>
 
-    <ul v-else class="cv-nf__list">
-      <li
-        v-for="n in filteredNotifications"
-        :key="n.id"
-        class="cv-nf__item"
-        :class="{ 'cv-nf__item--unread': !n.read }"
-        :data-accent="typeConfig[n.type]?.accent || 'accent'"
-        @click="handleClick(n)"
-      >
-        <span class="cv-nf__icon" aria-hidden="true">
-          <svg v-if="typeConfig[n.type]?.icon === 'chat'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12a8 8 0 0 1-8 8H7l-4 3v-6.5A8 8 0 0 1 11 4h2a8 8 0 0 1 8 8z"/>
-          </svg>
-          <svg v-else-if="typeConfig[n.type]?.icon === 'heart'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 20.5l-1.5-1.36C5.4 14.36 3 12.28 3 9.5 3 7 5 5 7.5 5c1.54 0 3.04.83 3.5 2.36C11.46 5.83 12.96 5 14.5 5 17 5 19 7 19 9.5c0 2.78-2.4 4.86-7.5 9.64L12 20.5z"/>
-          </svg>
-          <svg v-else-if="typeConfig[n.type]?.icon === 'check'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 8.5l5 5L20 2.5"/>
-          </svg>
-          <svg v-else-if="typeConfig[n.type]?.icon === 'chart'" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 3v18h18"/>
-            <path d="M7 15l4-4 3 3 6-6"/>
-          </svg>
-          <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="9"/>
-            <path d="M12 8v.01M12 12v4"/>
-          </svg>
-        </span>
+    <!-- LIST -->
+    <template v-else>
+      <NotificationList
+        :notifications="filteredNotifications"
+        :actions="true"
+        :manual="false"
+        :hide-header="true"
+        :show-empty="false"
+        @mark-read="handleMarkRead"
+        @delete="handleDelete"
+      />
 
-        <div class="cv-nf__body">
-          <div class="cv-nf__title-row">
-            <p class="cv-nf__item-title">{{ n.title }}</p>
-            <span v-if="!n.read" class="cv-nf__dot" aria-hidden="true"></span>
-          </div>
-          <p class="cv-nf__item-text">{{ n.text }}</p>
-          <p class="cv-nf__item-meta">{{ formatDate(n.createdAt, 'relative') }}</p>
-        </div>
-
-        <span class="cv-nf__arrow" aria-hidden="true">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 4l4 4-4 4"/>
+      <div v-if="hasMore" class="cv-nf__more">
+        <BaseButton
+          variant="outline"
+          :loading="loadingMore"
+          @click="loadMore"
+        >
+          <svg v-if="!loadingMore" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
           </svg>
-        </span>
-      </li>
-    </ul>
+          Загрузить ещё
+        </BaseButton>
+      </div>
+    </template>
+
+    <!-- CONFIRM CLEAR ALL -->
+    <ConfirmModal
+      v-model="showClearAllModal"
+      title="Очистить все уведомления?"
+      message="Действие необратимо — все уведомления будут удалены из вашего аккаунта."
+      confirm-text="Очистить"
+      variant="danger"
+      @confirm="clearAll"
+    />
   </div>
 </template>
 
@@ -245,11 +361,7 @@ onMounted(loadNotifications)
   flex-wrap: wrap;
 }
 
-.cv-nf__header-left {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+.cv-nf__header-left { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 
 .cv-nf__eyebrow {
   display: inline-flex;
@@ -296,6 +408,15 @@ onMounted(loadNotifications)
   display: inline-flex;
   gap: 10px;
   flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.cv-nf__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .cv-nf__tabs {
@@ -305,7 +426,6 @@ onMounted(loadNotifications)
   border-radius: 14px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(201, 169, 97, 0.14);
-  align-self: flex-start;
 }
 
 .cv-nf__tab {
@@ -356,60 +476,90 @@ onMounted(loadNotifications)
   border-color: rgba(255, 245, 214, 0.4);
 }
 
-.cv-nf__list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.cv-nf__tab-count--accent {
+  color: #E8D5A0;
+  background: rgba(201, 169, 97, 0.14);
+  border-color: rgba(201, 169, 97, 0.3);
 }
 
-.cv-nf__item {
+.cv-nf__search {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  gap: 8px;
+  min-width: 240px;
+  flex: 1;
+  max-width: 340px;
+  padding: 9px 12px 9px 14px;
+  background:
+    linear-gradient(180deg, rgba(28, 24, 18, 0.5), rgba(15, 13, 10, 0.6)),
+    linear-gradient(180deg, #16161C 0%, #101014 100%);
+  border: 1.5px solid rgba(201, 169, 97, 0.2);
+  border-radius: 11px;
+  transition: all 0.22s ease;
+}
+
+.cv-nf__search:focus-within {
+  border-color: rgba(201, 169, 97, 0.55);
+  box-shadow:
+    0 0 0 3px rgba(201, 169, 97, 0.1),
+    0 0 24px rgba(201, 169, 97, 0.1);
+}
+
+.cv-nf__search-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(201, 169, 97, 0.65);
+  flex-shrink: 0;
+}
+
+.cv-nf__search-input {
+  flex: 1;
+  min-width: 0;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(245, 240, 230, 0.95);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.cv-nf__search-input::placeholder { color: rgba(200, 190, 175, 0.45); }
+
+.cv-nf__search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: rgba(200, 190, 175, 0.5);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.cv-nf__search-clear:hover {
+  color: #E8A88A;
+  background: rgba(184, 119, 85, 0.15);
+  border-color: rgba(184, 119, 85, 0.35);
+}
+
+.cv-nf__error {
+  display: flex;
+  align-items: center;
   gap: 14px;
   padding: 16px 18px;
   border-radius: 14px;
-  background:
-    linear-gradient(180deg, rgba(28, 24, 18, 0.3), rgba(15, 13, 10, 0.4)),
-    linear-gradient(180deg, #14141A 0%, #0E0E12 100%);
-  border: 1px solid rgba(201, 169, 97, 0.14);
-  cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
-  overflow: hidden;
-  isolation: isolate;
+  background: linear-gradient(135deg, rgba(184, 119, 85, 0.1), rgba(184, 119, 85, 0.02));
+  border: 1px solid rgba(184, 119, 85, 0.32);
 }
 
-.cv-nf__item::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  background: transparent;
-  transition: background 0.25s ease;
-}
-
-.cv-nf__item--unread::before {
-  background: linear-gradient(180deg, #E8D5A0, #C9A961, #8B6F3F);
-}
-
-.cv-nf__item:hover {
-  border-color: rgba(201, 169, 97, 0.38);
-  transform: translateX(2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-}
-
-.cv-nf__item[data-accent="info"] .cv-nf__icon { color: #B8D4E8; background: rgba(106, 154, 194, 0.14); border-color: rgba(106, 154, 194, 0.32); }
-.cv-nf__item[data-accent="danger"] .cv-nf__icon { color: #E8A88A; background: rgba(184, 119, 85, 0.14); border-color: rgba(184, 119, 85, 0.32); }
-.cv-nf__item[data-accent="success"] .cv-nf__icon { color: #B8CEA8; background: rgba(122, 154, 106, 0.14); border-color: rgba(122, 154, 106, 0.32); }
-.cv-nf__item[data-accent="warning"] .cv-nf__icon { color: #F0C080; background: rgba(217, 119, 6, 0.14); border-color: rgba(217, 119, 6, 0.32); }
-.cv-nf__item[data-accent="accent"] .cv-nf__icon { color: #E8D5A0; background: rgba(201, 169, 97, 0.12); border-color: rgba(201, 169, 97, 0.32); }
-
-.cv-nf__icon {
+.cv-nf__error-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -417,68 +567,36 @@ onMounted(loadNotifications)
   height: 40px;
   flex-shrink: 0;
   border-radius: 11px;
-  border: 1px solid;
+  color: #E8A88A;
+  background: rgba(184, 119, 85, 0.15);
+  border: 1px solid rgba(184, 119, 85, 0.35);
 }
 
-.cv-nf__body {
+.cv-nf__error-body {
   flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+  min-width: 0;
 }
 
-.cv-nf__title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.cv-nf__item-title {
+.cv-nf__error-title {
   margin: 0;
   font-size: 13.5px;
   font-weight: 700;
-  letter-spacing: -0.05px;
   color: rgba(245, 240, 230, 0.95);
 }
 
-.cv-nf__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #F5E6BC, #C9A961);
-  box-shadow: 0 0 8px rgba(201, 169, 97, 0.9);
-  flex-shrink: 0;
-}
-
-.cv-nf__item-text {
+.cv-nf__error-text {
   margin: 0;
-  font-size: 12.5px;
-  font-weight: 500;
-  line-height: 1.55;
-  color: rgba(220, 210, 195, 0.7);
+  font-size: 12px;
+  color: rgba(200, 190, 175, 0.6);
 }
 
-.cv-nf__item-meta {
-  margin: 0;
-  font-size: 11px;
-  font-weight: 500;
-  color: rgba(200, 190, 175, 0.45);
-}
-
-.cv-nf__arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(201, 169, 97, 0.4);
-  flex-shrink: 0;
-  transition: all 0.25s ease;
-  align-self: center;
-}
-
-.cv-nf__item:hover .cv-nf__arrow {
-  color: #E8D5A0;
-  transform: translateX(2px);
+.cv-nf__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .cv-nf__skeleton {
@@ -534,16 +652,30 @@ onMounted(loadNotifications)
 }
 
 .cv-nf__empty-hint {
-  margin: 0;
+  margin: 0 0 6px;
   font-size: 12.5px;
   color: rgba(200, 190, 175, 0.5);
 }
 
+.cv-nf__more {
+  display: flex;
+  justify-content: center;
+  padding: 8px 0 0;
+}
+
+@media (max-width: 1024px) {
+  .cv-nf { padding: 32px 24px 60px; }
+  .cv-nf__title { font-size: 26px; }
+}
+
 @media (max-width: 768px) {
-  .cv-nf { padding: 24px 20px 60px; }
+  .cv-nf { padding: 20px 16px 60px; gap: 16px; }
   .cv-nf__title { font-size: 24px; }
   .cv-nf__actions { width: 100%; }
-  .cv-nf__actions > * { flex: 1; }
-  .cv-nf__item { padding: 14px; }
+  .cv-nf__actions > * { flex: 1; justify-content: center; }
+  .cv-nf__toolbar { flex-direction: column; align-items: stretch; }
+  .cv-nf__tabs { width: 100%; }
+  .cv-nf__tab { flex: 1; justify-content: center; }
+  .cv-nf__search { max-width: none; }
 }
 </style>

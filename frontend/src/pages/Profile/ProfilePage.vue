@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAnnouncementsStore } from '@/stores/announcements'
@@ -38,7 +38,7 @@ const stats = computed(() => [
     key: 'announcements',
     label: 'Мои объявления',
     value: announcementsStore.announcements.filter(a => a.sellerId === user.value?.id).length,
-    to: '/profile/announcements',
+    to: { name: 'my-announcements' },
     icon: 'car',
     accent: 'accent'
   },
@@ -46,7 +46,7 @@ const stats = computed(() => [
     key: 'favourites',
     label: 'Избранное',
     value: favouritesStore.favouritesCount || 0,
-    to: '/favourites',
+    to: { name: 'favourites' },
     icon: 'heart',
     accent: 'danger'
   },
@@ -54,7 +54,7 @@ const stats = computed(() => [
     key: 'chats',
     label: 'Чаты',
     value: chatStore.chats.length || 0,
-    to: '/chat',
+    to: { name: 'chat' },
     icon: 'chat',
     accent: 'info'
   },
@@ -62,7 +62,7 @@ const stats = computed(() => [
     key: 'unread',
     label: 'Непрочитанных',
     value: chatStore.totalUnread || 0,
-    to: '/chat',
+    to: { name: 'chat' },
     icon: 'bell',
     accent: 'warning'
   }
@@ -73,27 +73,77 @@ const menuSections = [
     title: 'Аккаунт',
     icon: 'user',
     items: [
-      { label: 'Редактировать профиль', to: '/profile/edit', icon: 'edit', desc: 'Личные данные и контакты' },
-      { label: 'Безопасность', to: '/profile/security', icon: 'shield', desc: 'Пароль и двухфакторка' },
-      { label: 'Активные сессии', to: '/profile/sessions', icon: 'device', desc: 'Устройства с доступом' },
-      { label: 'Уведомления', to: '/profile/notifications', icon: 'bell', desc: 'Email и push' }
+      {
+        label: 'Редактировать профиль',
+        to: { name: 'profile-edit' },
+        icon: 'edit',
+        desc: 'Личные данные и контакты'
+      },
+      {
+        label: 'Безопасность',
+        to: { name: 'security' },
+        icon: 'shield',
+        desc: 'Пароль и двухфакторка'
+      },
+      {
+        label: 'Активные сессии',
+        to: { name: 'my-sessions' },
+        icon: 'device',
+        desc: 'Устройства с доступом'
+      },
+      {
+        label: 'Уведомления',
+        to: { name: 'notifications' },
+        icon: 'bell',
+        desc: 'Входящие уведомления'
+      },
+      {
+        label: 'Настройки уведомлений',
+        to: { name: 'notification-settings' },
+        icon: 'bell-ring',
+        desc: 'Email и push'
+      }
     ]
   },
   {
     title: 'Активность',
     icon: 'activity',
     items: [
-      { label: 'Мои объявления', to: '/profile/announcements', icon: 'car', desc: 'Управление публикациями' },
-      { label: 'Избранное', to: '/favourites', icon: 'heart', desc: 'Сохранённые автомобили' },
-      { label: 'Подписки', to: '/profile/subscriptions', icon: 'bell', desc: 'Отслеживаемые объявления' },
-      { label: 'Сохранённые поиски', to: '/profile/saved-searches', icon: 'search', desc: 'Ваши фильтры' }
+      {
+        label: 'Мои объявления',
+        to: { name: 'my-announcements' },
+        icon: 'car',
+        desc: 'Управление публикациями'
+      },
+      {
+        label: 'Избранное',
+        to: { name: 'favourites' },
+        icon: 'heart',
+        desc: 'Сохранённые автомобили'
+      },
+      {
+        label: 'Подписки',
+        to: { name: 'my-subscriptions' },
+        icon: 'bell',
+        desc: 'Отслеживаемые объявления'
+      },
+      {
+        label: 'Сохранённые поиски',
+        to: { name: 'saved-searches' },
+        icon: 'search',
+        desc: 'Ваши фильтры'
+      }
     ]
   }
 ]
 
 const completeness = computed(() => {
   const fields = ['name', 'email', 'phone', 'city']
-  const filled = fields.filter(f => user.value?.[f]?.trim?.() || user.value?.[f]).length
+  const filled = fields.filter(f => {
+    const v = user.value?.[f]
+    if (typeof v === 'string') return v.trim().length > 0
+    return !!v
+  }).length
   return Math.round((filled / fields.length) * 100)
 })
 
@@ -113,8 +163,16 @@ const missingFields = computed(() => {
 
 const hasAvatar = computed(() => !!user.value?.avatar)
 
+const canShowPublicProfile = computed(() => !!user.value?.id)
+
 async function copyPublicProfileLink() {
-  const url = `${window.location.origin}/sellers/${user.value?.id}`
+  if (!canShowPublicProfile.value) {
+    toastStore.error('Профиль недоступен')
+    return
+  }
+
+  const url = `${window.location.origin}/sellers/${user.value.id}`
+
   try {
     await navigator.clipboard.writeText(url)
     toastStore.success('Ссылка на профиль скопирована')
@@ -124,14 +182,15 @@ async function copyPublicProfileLink() {
 }
 
 function goToPublicProfile() {
-  router.push(`/sellers/${user.value?.id}`)
+  if (!canShowPublicProfile.value) return
+  router.push({ name: 'seller-profile', params: { id: user.value.id } })
 }
 
 onMounted(() => {
   if (!announcementsStore.announcements.length) {
-    announcementsStore.fetchAnnouncements()
+    announcementsStore.fetchAnnouncements({})
   }
-  if (!favouritesStore.favourites.length) {
+  if (!favouritesStore.favourites?.length) {
     favouritesStore.fetchFavourites()
   }
   if (!chatStore.chats.length) {
@@ -251,6 +310,7 @@ onMounted(() => {
 
           <div class="cv-prof__hero-actions">
             <BaseButton
+              v-if="canShowPublicProfile"
               variant="outline"
               size="sm"
               @click="goToPublicProfile"
@@ -263,7 +323,21 @@ onMounted(() => {
               Публичный профиль
             </BaseButton>
 
-            <BaseButton size="sm" @click="router.push('/profile/edit')">
+            <button
+              v-if="canShowPublicProfile"
+              type="button"
+              class="cv-prof__copy-btn"
+              aria-label="Скопировать ссылку на профиль"
+              title="Скопировать ссылку"
+              @click="copyPublicProfileLink"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="12" height="12" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+
+            <BaseButton size="sm" @click="router.push({ name: 'profile-edit' })">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M16 3l5 5-11 11H5v-5z"/>
               </svg>
@@ -294,7 +368,7 @@ onMounted(() => {
           <button
             type="button"
             class="cv-prof__completeness-btn"
-            @click="router.push('/profile/edit')"
+            @click="router.push({ name: 'profile-edit' })"
           >
             Дозаполнить
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -353,7 +427,7 @@ onMounted(() => {
         <button
           type="button"
           class="cv-prof__quick-btn cv-prof__quick-btn--primary"
-          @click="router.push('/announcements/create')"
+          @click="router.push({ name: 'announcement-create' })"
         >
           <span class="cv-prof__quick-icon" aria-hidden="true">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -374,7 +448,7 @@ onMounted(() => {
         <button
           type="button"
           class="cv-prof__quick-btn"
-          @click="router.push('/announcements')"
+          @click="router.push({ name: 'announcements' })"
         >
           <span class="cv-prof__quick-icon" aria-hidden="true">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -416,7 +490,7 @@ onMounted(() => {
         <div class="cv-prof__menu-grid">
           <RouterLink
             v-for="item in section.items"
-            :key="item.to"
+            :key="item.label"
             :to="item.to"
             class="cv-prof__menu-item"
           >
@@ -431,6 +505,11 @@ onMounted(() => {
               <svg v-else-if="item.icon === 'device'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="4" width="20" height="14" rx="2"/>
                 <path d="M8 22h8M12 18v4"/>
+              </svg>
+              <svg v-else-if="item.icon === 'bell-ring'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <path d="M13.7 21a2 2 0 0 1-3.4 0"/>
+                <path d="M2 8c0-2.5 1.5-4.5 3-5M22 8c0-2.5-1.5-4.5-3-5"/>
               </svg>
               <svg v-else-if="item.icon === 'bell'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -480,7 +559,7 @@ onMounted(() => {
         <button
           type="button"
           class="cv-prof__danger-link"
-          @click="router.push('/profile/edit')"
+          @click="router.push({ name: 'profile-edit' })"
         >
           Перейти к удалению
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -789,6 +868,33 @@ onMounted(() => {
   gap: 8px;
   flex-shrink: 0;
   align-self: flex-start;
+  align-items: center;
+}
+
+.cv-prof__copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: rgba(220, 210, 195, 0.7);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(201, 169, 97, 0.2);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  flex-shrink: 0;
+}
+
+.cv-prof__copy-btn:hover {
+  color: #E8D5A0;
+  background: rgba(201, 169, 97, 0.08);
+  border-color: rgba(201, 169, 97, 0.4);
+  transform: translateY(-1px);
+}
+
+.cv-prof__copy-btn:active {
+  transform: translateY(0) scale(0.96);
 }
 
 .cv-prof__completeness {
@@ -1361,6 +1467,7 @@ onMounted(() => {
   .cv-prof__contact { width: 100%; justify-content: center; }
   .cv-prof__hero-actions { width: 100%; flex-direction: column; }
   .cv-prof__hero-actions > * { width: 100%; }
+  .cv-prof__copy-btn { width: 100%; height: auto; padding: 10px; }
 
   .cv-prof__completeness { padding: 14px 16px; }
   .cv-prof__completeness-btn { width: 100%; justify-content: center; }

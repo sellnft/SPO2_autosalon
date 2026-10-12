@@ -1,10 +1,12 @@
 <script setup>
-import { reactive, ref, computed, onMounted, onUnmounted } from 'vue'
+import { reactive, ref, computed, onMounted, watch } from 'vue'
 import { useNotificationsStore } from '@/stores/notifications'
 import { useToastStore } from '@/stores/toast'
 import BaseSwitch from '@/components/common/BaseSwitch.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
+
+defineOptions({ name: 'NotificationSettingsPage' })
 
 const notificationsStore = useNotificationsStore()
 const toastStore = useToastStore()
@@ -13,6 +15,7 @@ const saving = ref(false)
 const pushPermission = ref('default')
 const isDirty = ref(false)
 const testingPush = ref(false)
+const initialSnapshot = ref('')
 
 const settings = reactive({
   email: {
@@ -135,11 +138,35 @@ const pushStatusState = computed(() => {
   return 'default'
 })
 
+/* ============================================================
+ *  Снапшот / dirty
+ * ============================================================ */
+function takeSnapshot() {
+  initialSnapshot.value = JSON.stringify({
+    email: settings.email,
+    push: settings.push,
+    quietHours: settings.quietHours
+  })
+}
+
+function checkDirty() {
+  const current = JSON.stringify({
+    email: settings.email,
+    push: settings.push,
+    quietHours: settings.quietHours
+  })
+  isDirty.value = current !== initialSnapshot.value
+}
+
+watch(settings, checkDirty, { deep: true })
+
+/* ============================================================
+ *  Действия
+ * ============================================================ */
 function toggleAll(channel, value) {
   Object.keys(settings[channel]).forEach(key => {
     settings[channel][key] = value
   })
-  isDirty.value = true
 }
 
 async function requestPushPermission() {
@@ -180,7 +207,7 @@ async function sendTestPush() {
       })
       toastStore.success('Тестовое уведомление отправлено')
     } else {
-      toastStore.info('Service Worker недоступен')
+      toastStore.error('Service Worker недоступен')
     }
   } catch (err) {
     toastStore.error('Не удалось отправить тестовое уведомление')
@@ -189,12 +216,41 @@ async function sendTestPush() {
   }
 }
 
+async function applyRemoteSettings() {
+  try {
+    const remote = notificationsStore.settings || await notificationsStore.fetchSettings?.()
+    if (!remote) return
+
+    Object.keys(settings.email).forEach(key => {
+      if (remote.email?.[key] !== undefined) {
+        settings.email[key] = remote.email[key]
+      }
+    })
+
+    Object.keys(settings.push).forEach(key => {
+      if (remote.push?.[key] !== undefined) {
+        settings.push[key] = remote.push[key]
+      }
+    })
+
+    if (remote.quietHours) {
+      Object.assign(settings.quietHours, remote.quietHours)
+    }
+  } catch (err) {
+    // Фолбэк на дефолты
+  } finally {
+    takeSnapshot()
+    isDirty.value = false
+  }
+}
+
 async function handleSave() {
   saving.value = true
   try {
     await notificationsStore.updateNotificationSettings(settings)
-    toastStore.success('Настройки сохранены')
+    takeSnapshot()
     isDirty.value = false
+    toastStore.success('Настройки сохранены')
   } catch (err) {
     toastStore.error('Ошибка сохранения')
   } finally {
@@ -202,31 +258,20 @@ async function handleSave() {
   }
 }
 
-function handleReset() {
-  window.location.reload()
+async function handleReset() {
+  await applyRemoteSettings()
+  toastStore.success('Изменения отменены')
 }
 
+/* ============================================================
+ *  Lifecycle
+ * ============================================================ */
 onMounted(async () => {
   if (pushSupported.value) {
     pushPermission.value = Notification.permission
   }
 
-  try {
-    const remoteSettings = await notificationsStore.fetchNotificationSettings?.()
-    if (remoteSettings) {
-      Object.keys(settings.email).forEach(key => {
-        if (remoteSettings.email?.[key] !== undefined) settings.email[key] = remoteSettings.email[key]
-      })
-      Object.keys(settings.push).forEach(key => {
-        if (remoteSettings.push?.[key] !== undefined) settings.push[key] = remoteSettings.push[key]
-      })
-      if (remoteSettings.quietHours) {
-        Object.assign(settings.quietHours, remoteSettings.quietHours)
-      }
-    }
-  } catch (err) {
-    // Фолбэк на дефолты
-  }
+  await applyRemoteSettings()
 })
 </script>
 
@@ -276,6 +321,7 @@ onMounted(async () => {
         </div>
       </section>
 
+      <!-- EMAIL CARD -->
       <section class="cv-nset__card">
         <div class="cv-nset__card-glow" aria-hidden="true"></div>
 
@@ -363,14 +409,12 @@ onMounted(async () => {
               <span class="cv-nset__item-description">{{ item.description }}</span>
             </div>
 
-            <BaseSwitch
-              v-model="settings.email[item.key]"
-              @update:model-value="isDirty = true"
-            />
+            <BaseSwitch v-model="settings.email[item.key]" />
           </div>
         </div>
       </section>
 
+      <!-- PUSH CARD -->
       <section class="cv-nset__card">
         <div class="cv-nset__card-glow cv-nset__card-glow--push" aria-hidden="true"></div>
 
@@ -515,14 +559,12 @@ onMounted(async () => {
               <span class="cv-nset__item-description">{{ item.description }}</span>
             </div>
 
-            <BaseSwitch
-              v-model="settings.push[item.key]"
-              @update:model-value="isDirty = true"
-            />
+            <BaseSwitch v-model="settings.push[item.key]" />
           </div>
         </div>
       </section>
 
+      <!-- QUIET HOURS -->
       <section class="cv-nset__card">
         <header class="cv-nset__card-header">
           <div class="cv-nset__card-heading">
@@ -539,10 +581,7 @@ onMounted(async () => {
             </div>
           </div>
 
-          <BaseSwitch
-            v-model="settings.quietHours.enabled"
-            @update:model-value="isDirty = true"
-          />
+          <BaseSwitch v-model="settings.quietHours.enabled" />
         </header>
 
         <div v-if="settings.quietHours.enabled" class="cv-nset__quiet">
@@ -552,7 +591,6 @@ onMounted(async () => {
               type="time"
               v-model="settings.quietHours.from"
               class="cv-nset__quiet-input"
-              @change="isDirty = true"
             />
           </div>
 
@@ -564,7 +602,6 @@ onMounted(async () => {
               type="time"
               v-model="settings.quietHours.to"
               class="cv-nset__quiet-input"
-              @change="isDirty = true"
             />
           </div>
 
@@ -574,6 +611,7 @@ onMounted(async () => {
         </div>
       </section>
 
+      <!-- FOOTER -->
       <footer class="cv-nset__footer">
         <span v-if="isDirty" class="cv-nset__dirty">
           <span class="cv-nset__dirty-dot" aria-hidden="true"></span>
@@ -1199,39 +1237,122 @@ onMounted(async () => {
 }
 
 @media (max-width: 1024px) {
-  .cv-nset__container { padding: 0 32px; }
-  .cv-nset__title { font-size: 30px; letter-spacing: -0.6px; }
+  .cv-nset__container {
+    padding: 0 32px;
+  }
+
+  .cv-nset__title {
+    font-size: 30px;
+    letter-spacing: -0.6px;
+  }
 }
 
 @media (max-width: 768px) {
-  .cv-nset { padding: 12px 0 60px; }
-  .cv-nset__container { padding: 0 20px; gap: 18px; }
-  .cv-nset__title { font-size: 24px; letter-spacing: -0.4px; }
-  .cv-nset__subtitle { font-size: 13.5px; }
+  .cv-nset {
+    padding: 12px 0 60px;
+  }
 
-  .cv-nset__info { grid-template-columns: 1fr; gap: 8px; }
+  .cv-nset__container {
+    padding: 0 20px;
+    gap: 18px;
+  }
 
-  .cv-nset__card { padding: 18px 18px 14px; border-radius: 1rem; }
-  .cv-nset__card-header { gap: 12px; padding-bottom: 14px; }
-  .cv-nset__card-heading { gap: 12px; }
-  .cv-nset__card-icon { width: 38px; height: 38px; border-radius: 10px; }
-  .cv-nset__card-title { font-size: 15px; }
-  .cv-nset__card-counter { font-size: 11px; }
+  .cv-nset__title {
+    font-size: 24px;
+    letter-spacing: -0.4px;
+  }
 
-  .cv-nset__card-actions { width: 100%; }
-  .cv-nset__mini-btn { flex: 1; justify-content: center; padding: 8px 10px; }
+  .cv-nset__subtitle {
+    font-size: 13.5px;
+  }
 
-  .cv-nset__item { padding: 12px 0; gap: 12px; }
-  .cv-nset__item:hover { padding-left: 0; }
-  .cv-nset__item-icon { width: 32px; height: 32px; border-radius: 9px; }
-  .cv-nset__item-title { font-size: 13px; }
-  .cv-nset__item-description { font-size: 11.5px; }
+  .cv-nset__info {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 
-  .cv-nset__quiet { flex-direction: column; align-items: flex-start; gap: 10px; }
-  .cv-nset__quiet-field { width: 100%; }
-  .cv-nset__quiet-input { flex: 1; }
-  .cv-nset__quiet-dash { display: none; }
-  .cv-nset__quiet-hint { min-width: 0; }
+  .cv-nset__card {
+    padding: 18px 18px 14px;
+    border-radius: 1rem;
+  }
+
+  .cv-nset__card-header {
+    gap: 12px;
+    padding-bottom: 14px;
+  }
+
+  .cv-nset__card-heading {
+    gap: 12px;
+  }
+
+  .cv-nset__card-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+  }
+
+  .cv-nset__card-title {
+    font-size: 15px;
+  }
+
+  .cv-nset__card-counter {
+    font-size: 11px;
+  }
+
+  .cv-nset__card-actions {
+    width: 100%;
+  }
+
+  .cv-nset__mini-btn {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 10px;
+  }
+
+  .cv-nset__item {
+    padding: 12px 0;
+    gap: 12px;
+  }
+
+  .cv-nset__item:hover {
+    padding-left: 0;
+  }
+
+  .cv-nset__item-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+
+  .cv-nset__item-title {
+    font-size: 13px;
+  }
+
+  .cv-nset__item-description {
+    font-size: 11.5px;
+  }
+
+  .cv-nset__quiet {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .cv-nset__quiet-field {
+    width: 100%;
+  }
+
+  .cv-nset__quiet-input {
+    flex: 1;
+  }
+
+  .cv-nset__quiet-dash {
+    display: none;
+  }
+
+  .cv-nset__quiet-hint {
+    min-width: 0;
+  }
 
   .cv-nset__footer {
     flex-direction: column;
@@ -1240,7 +1361,15 @@ onMounted(async () => {
     gap: 12px;
     bottom: 12px;
   }
-  .cv-nset__footer-actions { margin-left: 0; width: 100%; flex-direction: column-reverse; }
-  .cv-nset__footer-actions > * { width: 100%; }
+
+  .cv-nset__footer-actions {
+    margin-left: 0;
+    width: 100%;
+    flex-direction: column-reverse;
+  }
+
+  .cv-nset__footer-actions > * {
+    width: 100%;
+  }
 }
 </style>
