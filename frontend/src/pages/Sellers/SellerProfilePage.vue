@@ -2,10 +2,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useAdminStore } from '@/stores/admin'
-import { useAnnouncementsStore } from '@/stores/announcements'
+import { usersApi } from '@/services/api/usersApi'
 import AnnouncementCard from '@/components/announcements/AnnouncementCard.vue'
-import AnnouncementSkeleton from '@/components/announcements/AnnouncementSkeleton.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import { formatDate } from '@/utils/formatDate'
 
@@ -18,12 +16,12 @@ const props = defineProps({
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const adminStore = useAdminStore()
-const announcementsStore = useAnnouncementsStore()
 
 const loading = ref(true)
 const seller = ref(null)
 const sellerAnnouncements = ref([])
+const notFound = ref(false)
+const loadError = ref(null)
 
 const sellerId = computed(() => Number(props.id))
 
@@ -31,7 +29,9 @@ const isOwnProfile = computed(() =>
   authStore.user?.id && authStore.user.id === sellerId.value
 )
 
-const initials = computed(() => seller.value?.name?.charAt(0)?.toUpperCase() || '?')
+const initials = computed(() =>
+  seller.value?.name?.charAt(0)?.toUpperCase() || '?'
+)
 
 const activeAnnouncements = computed(() =>
   sellerAnnouncements.value.filter(a => a.status === 'active')
@@ -41,35 +41,59 @@ const soldAnnouncements = computed(() =>
   sellerAnnouncements.value.filter(a => a.status === 'sold')
 )
 
+/* ============================================================
+ *  Загрузка
+ * ============================================================ */
+
 async function loadSeller() {
+  // 1) Невалидный ID → однозначно 404
   if (!sellerId.value || Number.isNaN(sellerId.value)) {
     router.replace({ name: 'not-found' })
     return
   }
 
   loading.value = true
-  try {
-    // Продавец — это user. Тянем из adminStore.users (публичный список seller'ов можно вынести отдельно)
-    if (!adminStore.users.length) {
-      await adminStore.fetchUsers()
-    }
-    seller.value = adminStore.users.find(u => u.id === sellerId.value) || null
+  notFound.value = false
+  loadError.value = null
 
-    if (!seller.value) {
-      router.replace({ name: 'not-found' })
+  try {
+    // 2) Публичный профиль продавца
+    const profile = await usersApi.getPublicProfile(sellerId.value)
+
+    if (!profile) {
+      // Профиля нет — показываем заглушку внутри страницы, НЕ редиректим
+      notFound.value = true
+      seller.value = null
+      sellerAnnouncements.value = []
       return
     }
 
-    await announcementsStore.fetchAnnouncements({ sellerId: sellerId.value, perPage: 100 })
-    sellerAnnouncements.value = announcementsStore.announcements.filter(
-      a => a.sellerId === sellerId.value
-    )
+    seller.value = profile
+
+    // 3) Объявления продавца
+    const res = await usersApi.getUserAnnouncements(sellerId.value, {
+      perPage: 100
+    })
+
+    sellerAnnouncements.value = Array.isArray(res?.items) ? res.items : []
   } catch (err) {
-    console.error('Failed to load seller:', err)
+    // 4) Сетевые/серверные ошибки
+    if (err?.status === 404) {
+      notFound.value = true
+      seller.value = null
+      sellerAnnouncements.value = []
+    } else {
+      loadError.value = err?.message || 'Не удалось загрузить профиль'
+      console.error('Failed to load seller:', err)
+    }
   } finally {
     loading.value = false
   }
 }
+
+/* ============================================================
+ *  Действия
+ * ============================================================ */
 
 function goToChat() {
   router.push({ name: 'chat', query: { to: sellerId.value } })
@@ -78,6 +102,10 @@ function goToChat() {
 function goToAnnouncement(a) {
   router.push({ name: 'announcement-detail', params: { id: a.id } })
 }
+
+/* ============================================================
+ *  Lifecycle
+ * ============================================================ */
 
 onMounted(loadSeller)
 watch(() => route.params.id, loadSeller)
@@ -92,7 +120,7 @@ watch(() => route.params.id, loadSeller)
       Назад
     </button>
 
-    <!-- SKELETON -->
+    <!-- ============ LOADING ============ -->
     <template v-if="loading">
       <div class="cv-sp__card">
         <div class="cv-sp__skeleton cv-sp__skeleton--avatar"></div>
@@ -104,13 +132,53 @@ watch(() => route.params.id, loadSeller)
       </div>
     </template>
 
-    <template v-else-if="seller">
-      <!-- PROFILE CARD -->
+    <!-- ============ ERROR ============ -->
+    <template v-else-if="loadError">
+      <div class="cv-sp__error">
+        <span class="cv-sp__error-icon" aria-hidden="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 8v5M12 17h.01"/>
+          </svg>
+        </span>
+        <p class="cv-sp__error-title">Не удалось загрузить профиль</p>
+        <p class="cv-sp__error-text">{{ loadError }}</p>
+        <BaseButton variant="outline" @click="loadSeller">
+          Повторить
+        </BaseButton>
+      </div>
+    </template>
+
+    <!-- ============ NOT FOUND ============ -->
+    <template v-else-if="notFound || !seller">
+      <div class="cv-sp__notfound">
+        <span class="cv-sp__notfound-icon" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </span>
+        <p class="cv-sp__notfound-title">Продавец не найден</p>
+        <p class="cv-sp__notfound-hint">
+          Возможно, профиль удалён или недоступен
+        </p>
+        <BaseButton variant="outline" @click="router.back()">
+          Назад
+        </BaseButton>
+      </div>
+    </template>
+
+    <!-- ============ PROFILE ============ -->
+    <template v-else>
       <section class="cv-sp__card">
         <header class="cv-sp__header">
           <div class="cv-sp__avatar">
             <span class="cv-sp__avatar-inner">{{ initials }}</span>
-            <span v-if="seller.status === 'active'" class="cv-sp__avatar-dot" aria-hidden="true"></span>
+            <span
+              v-if="seller.status === 'active'"
+              class="cv-sp__avatar-dot"
+              aria-hidden="true"
+            ></span>
           </div>
 
           <div class="cv-sp__info">
@@ -146,7 +214,11 @@ watch(() => route.params.id, loadSeller)
               </svg>
               Написать
             </BaseButton>
-            <BaseButton v-else variant="outline" @click="router.push('/profile/edit')">
+            <BaseButton
+              v-else
+              variant="outline"
+              @click="router.push({ name: 'profile-edit' })"
+            >
               Редактировать
             </BaseButton>
           </div>
@@ -168,7 +240,6 @@ watch(() => route.params.id, loadSeller)
         </div>
       </section>
 
-      <!-- ANNOUNCEMENTS -->
       <section class="cv-sp__section">
         <header class="cv-sp__section-head">
           <h2 class="cv-sp__section-title">
@@ -179,7 +250,9 @@ watch(() => route.params.id, loadSeller)
 
         <div v-if="!activeAnnouncements.length" class="cv-sp__empty">
           <p class="cv-sp__empty-title">У продавца нет активных объявлений</p>
-          <p class="cv-sp__empty-hint">Загляните позже — возможно, появится что-то интересное</p>
+          <p class="cv-sp__empty-hint">
+            Загляните позже — возможно, появится что-то интересное
+          </p>
         </div>
 
         <div v-else class="cv-sp__grid">
@@ -464,6 +537,84 @@ watch(() => route.params.id, loadSeller)
   color: rgba(200, 190, 175, 0.5);
 }
 
+/* ============ NOT FOUND ============ */
+.cv-sp__notfound {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 80px 24px;
+  text-align: center;
+  border-radius: 16px;
+  border: 1px dashed rgba(201, 169, 97, 0.16);
+}
+
+.cv-sp__notfound-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  color: rgba(201, 169, 97, 0.55);
+  background: rgba(201, 169, 97, 0.06);
+  border: 1px solid rgba(201, 169, 97, 0.18);
+  margin-bottom: 6px;
+}
+
+.cv-sp__notfound-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: rgba(245, 240, 230, 0.9);
+}
+
+.cv-sp__notfound-hint {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: rgba(200, 190, 175, 0.55);
+}
+
+/* ============ ERROR ============ */
+.cv-sp__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 60px 24px;
+  text-align: center;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(184, 119, 85, 0.08), rgba(184, 119, 85, 0.02));
+  border: 1px solid rgba(184, 119, 85, 0.28);
+}
+
+.cv-sp__error-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  color: #E8A88A;
+  background: rgba(184, 119, 85, 0.14);
+  border: 1px solid rgba(184, 119, 85, 0.32);
+  margin-bottom: 4px;
+}
+
+.cv-sp__error-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(245, 240, 230, 0.9);
+}
+
+.cv-sp__error-text {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: rgba(200, 190, 175, 0.6);
+}
+
+/* ============ SKELETON ============ */
 .cv-sp__skeleton {
   position: relative;
   border-radius: 6px;

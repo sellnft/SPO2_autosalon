@@ -67,6 +67,9 @@ const mockSessions = [
 export const usersApi = {
   /**
    * Получить пользователя по ID.
+   * Используется в публичном профиле продавца.
+   *
+   * Backend: GET /users/:id  (публичный, без авторизации)
    */
   async getUser(id, opts = {}) {
     const uid = normalizeId(id)
@@ -82,6 +85,17 @@ export const usersApi = {
       signal: opts.signal
     })
     return data
+  },
+
+  /**
+   * Алиас для публичного профиля продавца.
+   * Смысловое разделение: «мой профиль» vs «публичный профиль».
+   * Если на бэке это разные эндпоинты — замени URL.
+   *
+   * Backend: GET /users/:id (или /sellers/:id)
+   */
+  async getPublicProfile(id, opts = {}) {
+    return usersApi.getUser(id, opts)
   },
 
   /**
@@ -103,7 +117,6 @@ export const usersApi = {
       const index = mockUsers.findIndex(u => u.id === targetId)
       if (index === -1) return null
 
-      // Не даём перезаписать id
       const { id, ...safeData } = userData
       mockUsers[index] = {
         ...mockUsers[index],
@@ -113,7 +126,6 @@ export const usersApi = {
       return cloneDeep(mockUsers[index])
     }
 
-    // Эндпоинт зависит от режима
     const url = opts.isAdminEdit && userData.id
       ? `/users/${userData.id}`
       : '/users/me'
@@ -127,7 +139,6 @@ export const usersApi = {
 
   /**
    * Загрузить аватар (multipart/form-data).
-   * axios сам поставит правильный Content-Type с boundary.
    */
   async uploadAvatar(file, opts = {}) {
     if (!file) return null
@@ -135,7 +146,6 @@ export const usersApi = {
     if (config.api.useMock) {
       await mockDelay(opts.delay ?? 600)
 
-      // Имитируем URL — обычно возвращается сервером
       const fakeUrl = `https://i.pravatar.cc/200?u=${Date.now()}`
       const user = mockUsers.find(u => u.id === CURRENT_USER_ID)
       if (user) user.avatar = fakeUrl
@@ -172,13 +182,9 @@ export const usersApi = {
 
   /* ---------- Сессии ---------- */
 
-  /**
-   * Список активных сессий.
-   */
   async getSessions(opts = {}) {
     if (config.api.useMock) {
       await mockDelay(opts.delay ?? 200)
-      // Сортировка: текущая сессия сверху, остальные по lastActive desc
       const sorted = [...mockSessions].sort((a, b) => {
         if (a.current && !b.current) return -1
         if (!a.current && b.current) return 1
@@ -193,9 +199,6 @@ export const usersApi = {
     return data
   },
 
-  /**
-   * Завершить конкретную сессию.
-   */
   async revokeSession(sessionId, opts = {}) {
     const sid = normalizeId(sessionId)
     if (!sid) return { ok: false, reason: 'invalid_id' }
@@ -213,15 +216,11 @@ export const usersApi = {
     return data ?? { ok: true, id: sid }
   },
 
-  /**
-   * Завершить все сессии, кроме текущей.
-   */
   async revokeAllSessions(opts = {}) {
     if (config.api.useMock) {
       await mockDelay(opts.delay ?? 300)
 
       const removed = mockSessions.length
-      // Оставляем только текущую
       const current = mockSessions.find(s => s.current)
       mockSessions.splice(0, mockSessions.length)
       if (current) mockSessions.push(current)
@@ -237,10 +236,6 @@ export const usersApi = {
 
   /* ---------- Пароль и безопасность ---------- */
 
-  /**
-   * Смена пароля.
-   * payload: { currentPassword, newPassword }
-   */
   async changePassword(payload, opts = {}) {
     if (!payload?.currentPassword || !payload?.newPassword) {
       return { ok: false, reason: 'missing_fields' }
@@ -257,9 +252,6 @@ export const usersApi = {
     return data ?? { ok: true }
   },
 
-  /**
-   * Установить пароль (если у юзера нет — например, после OAuth).
-   */
   async setPassword(password, opts = {}) {
     if (config.api.useMock) {
       await mockDelay(opts.delay ?? 400)
@@ -272,13 +264,10 @@ export const usersApi = {
     return data ?? { ok: true }
   },
 
-  /**
-   * Верификация телефона.
-   */
   async verifyPhone(code, opts = {}) {
     if (config.api.useMock) {
       await mockDelay(opts.delay ?? 300)
-      return { ok: code === '1234' } // простой мок
+      return { ok: code === '1234' }
     }
 
     const { data } = await axiosInstance.post('/users/verify-phone', { code }, {
@@ -287,9 +276,6 @@ export const usersApi = {
     return data
   },
 
-  /**
-   * Запросить SMS с кодом верификации.
-   */
   async requestPhoneVerification(phone, opts = {}) {
     if (config.api.useMock) {
       await mockDelay(opts.delay ?? 300)
@@ -306,10 +292,6 @@ export const usersApi = {
 
   /* ---------- Аккаунт ---------- */
 
-  /**
-   * Удалить аккаунт (soft-delete обычно).
-   * Требует пароль для подтверждения.
-   */
   async deleteAccount(password, opts = {}) {
     if (!password) return { ok: false, reason: 'missing_password' }
 
@@ -326,8 +308,10 @@ export const usersApi = {
   },
 
   /**
-   * Объявления конкретного пользователя (для профиля).
-   * По сути проксирует announcementsApi, но с фильтром по seller.
+   * Объявления конкретного пользователя.
+   * Для публичного профиля продавца.
+   *
+   * Backend: GET /users/:id/announcements
    */
   async getUserAnnouncements(userId, params = {}, opts = {}) {
     const uid = normalizeId(userId)
@@ -336,7 +320,6 @@ export const usersApi = {
     if (config.api.useMock) {
       await mockDelay(opts.delay ?? 250)
 
-      // Динамический импорт, чтобы не тянуть весь мок сразу
       const { mockAnnouncements } = await import('@/mock/announcements')
 
       const own = mockAnnouncements.filter(a => a.sellerId === uid)

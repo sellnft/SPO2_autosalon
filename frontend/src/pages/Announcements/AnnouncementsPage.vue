@@ -9,6 +9,7 @@ import AnnouncementFilters from '@/components/announcements/AnnouncementFilters.
 import AnnouncementFilterMobile from '@/components/announcements/AnnouncementFilterMobile.vue'
 import AnnouncementSort from '@/components/announcements/AnnouncementSort.vue'
 import AnnouncementSkeleton from '@/components/announcements/AnnouncementSkeleton.vue'
+import QuickViewModal from '@/components/announcements/QuickViewModal.vue'
 import BasePagination from '@/components/common/BasePagination.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
 import BaseInput from '@/components/common/BaseInput.vue'
@@ -29,6 +30,12 @@ const viewMode = ref('grid')
 const searchInput = ref(announcementsStore.filters.search || '')
 const isInitializing = ref(false)
 const perPageOptions = [12, 24, 48, 96]
+
+/* ============================================================
+ *  Quick view (модалка быстрого просмотра)
+ * ============================================================ */
+const quickViewOpen = ref(false)
+const quickViewAnnouncement = ref(null)
 
 const quickFilters = [
   { key: 'popular', label: 'Популярные', icon: 'fire', params: { sortBy: 'views', sortOrder: 'desc' } },
@@ -207,6 +214,58 @@ function handleSearchSubmit() {
 
 function handlePerPageChange(value) {
   updateFilters({ perPage: Number(value) })
+}
+
+/* ============================================================
+ *  Quick view / compare / share — обработчики событий из Grid
+ * ============================================================ */
+
+function handleQuickView(announcement) {
+  if (!announcement) return
+  quickViewAnnouncement.value = announcement
+  quickViewOpen.value = true
+}
+
+function handleCompare(announcement) {
+  if (!announcement) return
+  const text = `Сравнение: ${announcement.title || announcement.brand || 'объявление'}`
+  if (typeof toastStore.info === 'function') {
+    toastStore.info(text)
+  } else {
+    toastStore.success(text)
+  }
+}
+
+function handleShare(announcement) {
+  if (!announcement) return
+  const url = `${window.location.origin}/announcements/${announcement.id}`
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard
+      .writeText(url)
+      .then(() => toastStore.success('Ссылка скопирована'))
+      .catch(() => toastStore.error('Не удалось скопировать ссылку'))
+  } else {
+    // Фолбэк для не-secure контекста
+    try {
+      const ta = document.createElement('textarea')
+      ta.value = url
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      toastStore.success('Ссылка скопирована')
+    } catch {
+      toastStore.error('Не удалось скопировать ссылку')
+    }
+  }
+}
+
+function closeQuickView() {
+  quickViewOpen.value = false
+  quickViewAnnouncement.value = null
 }
 
 async function saveSearch() {
@@ -555,6 +614,9 @@ onUnmounted(() => {
             <AnnouncementGrid
               :announcements="announcementsStore.announcements"
               :view="viewMode"
+              @quick-view="handleQuickView"
+              @compare="handleCompare"
+              @share="handleShare"
             />
 
             <BasePagination
@@ -574,6 +636,12 @@ onUnmounted(() => {
       :filters="announcementsStore.filters"
       @update:filters="updateFilters"
       @reset="resetFilters"
+    />
+
+    <QuickViewModal
+      v-model="quickViewOpen"
+      :announcement="quickViewAnnouncement"
+      @close="closeQuickView"
     />
   </div>
 </template>
