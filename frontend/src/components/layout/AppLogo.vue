@@ -1,6 +1,17 @@
 <script setup>
 import logoImage from '@/assets/images/logo.png'
 
+/**
+ * AppLogo — логотип-ссылка на главную.
+ *
+ * Система размеров построена на CSS-токенах:
+ *   размер (sm/md/lg) → набор переменных → все элементы читают переменные
+ *   вариант (default/light/mono) → только цвета и фон, размеры не трогает
+ *
+ * Это гарантирует, что при любой комбинации size + variant логотип
+ * имеет согласованные пропорции и размеры.
+ */
+
 defineProps({
   size: {
     type: String,
@@ -16,15 +27,23 @@ defineProps({
 </script>
 
 <template>
-  <RouterLink to="/" class="cv-logo" :class="[`cv-logo--${size}`, `cv-logo--${variant}`]">
-    <span class="cv-logo__emblem">
+  <RouterLink
+    to="/"
+    class="cv-logo"
+    :class="[`cv-logo--${size}`, `cv-logo--${variant}`]"
+    aria-label="CarVibe — на главную"
+  >
+    <span class="cv-logo__emblem" aria-hidden="true">
       <img
         :src="logoImage"
-        alt="CarVibe"
+        alt=""
+        width="42"
+        height="42"
         class="cv-logo__image"
         draggable="false"
+        decoding="async"
       />
-      <span class="cv-logo__emblem-shine" aria-hidden="true"></span>
+      <span class="cv-logo__emblem-shine"></span>
     </span>
 
     <span class="cv-logo__text">
@@ -37,18 +56,47 @@ defineProps({
 </template>
 
 <style scoped>
+/* ============================================================
+   AppLogo
+   - Размер (sm/md/lg) управляет только CSS-токенами
+   - Вариант (default/light/mono) — только цвета и фон
+   - aspect-ratio: 1 гарантирует пропорции эмблемы
+   - focus-visible, prefers-reduced-motion
+   ============================================================ */
+
 .cv-logo {
-  --cv-bronze-light: #E8D5A0;
-  --cv-bronze: #C9A961;
-  --cv-bronze-dark: #8B6F3F;
-  --cv-title: #F5F0E6;
-  --cv-title-accent: #E8D5A0;
+  /* --- Размерные токены: значения по умолчанию (= md) --- */
+  --cv-logo-emblem-size: 42px;
+  --cv-logo-emblem-radius: 12px;
+  --cv-logo-image-padding: 6px;
+  --cv-logo-title-size: 19px;
+  --cv-logo-subtitle-size: 10px;
+  --cv-logo-subtitle-tracking: 1.8px;
+  --cv-logo-gap: 12px;
+
+  /* --- Палитра --- */
+  --cv-bronze-light: #e8d5a0;
+  --cv-bronze: #c9a961;
+  --cv-bronze-dark: #8b6f3f;
+  --cv-title: #f5f0e6;
+  --cv-title-accent: #e8d5a0;
   --cv-subtitle: rgba(220, 210, 195, 0.45);
+  --cv-focus: var(--cv-bronze-light);
+
+  /* --- Фон эмблемы (переопределяется вариантами) --- */
+  --cv-emblem-bg: linear-gradient(180deg, rgba(40, 32, 22, 0.9) 0%, rgba(15, 12, 8, 0.95) 100%);
+  --cv-emblem-border: rgba(201, 169, 97, 0.35);
+  --cv-emblem-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(201, 169, 97, 0.06) inset,
+    0 1px 0 rgba(232, 213, 160, 0.15) inset;
 
   display: inline-flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--cv-logo-gap);
   text-decoration: none;
+  border-radius: 12px;
+  min-width: 0;
   transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -56,22 +104,35 @@ defineProps({
   transform: translateY(-1px);
 }
 
+.cv-logo:focus-visible {
+  outline: 2px solid var(--cv-focus);
+  outline-offset: 3px;
+}
+
+.cv-logo:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* --- Эмблема --- */
 .cv-logo__emblem {
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  background:
-    linear-gradient(180deg, rgba(40, 32, 22, 0.9) 0%, rgba(15, 12, 8, 0.95) 100%);
-  border: 1px solid rgba(201, 169, 97, 0.35);
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(201, 169, 97, 0.06) inset,
-    0 1px 0 rgba(232, 213, 160, 0.15) inset;
-  overflow: hidden;
-  transition: all 0.3s ease;
   flex-shrink: 0;
+
+  width: var(--cv-logo-emblem-size);
+  height: var(--cv-logo-emblem-size);
+  aspect-ratio: 1 / 1;
+
+  border-radius: var(--cv-logo-emblem-radius);
+  background: var(--cv-emblem-bg);
+  border: 1px solid var(--cv-emblem-border);
+  box-shadow: var(--cv-emblem-shadow);
+  overflow: hidden;
+  transition:
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .cv-logo:hover .cv-logo__emblem {
@@ -90,9 +151,11 @@ defineProps({
   display: block;
   position: relative;
   z-index: 1;
-  padding: 6px;
+  padding: var(--cv-logo-image-padding);
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
   transition: transform 0.3s ease;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .cv-logo:hover .cv-logo__image {
@@ -120,24 +183,29 @@ defineProps({
   left: 100%;
 }
 
+/* --- Текст --- */
 .cv-logo__text {
   display: flex;
   flex-direction: column;
   line-height: 1;
   gap: 3px;
+  min-width: 0;
 }
 
 .cv-logo__title {
-  font-size: 19px;
+  font-size: var(--cv-logo-title-size);
   font-weight: 800;
   color: var(--cv-title);
   letter-spacing: -0.6px;
   line-height: 1.1;
   text-shadow: 0 1px 12px rgba(201, 169, 97, 0.15);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cv-logo__title-accent {
-  background: linear-gradient(135deg, #F5E6BC 0%, #C9A961 55%, #8B6F3F 100%);
+  background: linear-gradient(135deg, #f5e6bc 0%, #c9a961 55%, #8b6f3f 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -145,82 +213,111 @@ defineProps({
 }
 
 .cv-logo__subtitle {
-  font-size: 10px;
+  font-size: var(--cv-logo-subtitle-size);
   font-weight: 600;
   color: var(--cv-subtitle);
   text-transform: uppercase;
-  letter-spacing: 1.8px;
+  letter-spacing: var(--cv-logo-subtitle-tracking);
   line-height: 1;
+  white-space: nowrap;
 }
+
+/* ============================================================
+   Размеры — задают ТОЛЬКО токены, разметка/структура общая
+   ============================================================ */
 
 .cv-logo--sm {
-  gap: 10px;
+  --cv-logo-emblem-size: 34px;
+  --cv-logo-emblem-radius: 10px;
+  --cv-logo-image-padding: 4px;
+  --cv-logo-title-size: 16px;
+  --cv-logo-subtitle-size: 9px;
+  --cv-logo-subtitle-tracking: 1.5px;
+  --cv-logo-gap: 10px;
 }
-.cv-logo--sm .cv-logo__emblem {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-}
-.cv-logo--sm .cv-logo__image { padding: 4px; }
-.cv-logo--sm .cv-logo__title { font-size: 16px; }
-.cv-logo--sm .cv-logo__subtitle {
-  font-size: 9px;
-  letter-spacing: 1.5px;
-}
+
+/* .cv-logo--md — совпадает с дефолтными токенами в .cv-logo,
+   отдельные правила не нужны. Оставлено для явности. */
 
 .cv-logo--lg {
-  gap: 14px;
-}
-.cv-logo--lg .cv-logo__emblem {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-}
-.cv-logo--lg .cv-logo__image { padding: 8px; }
-.cv-logo--lg .cv-logo__title { font-size: 24px; }
-.cv-logo--lg .cv-logo__subtitle {
-  font-size: 11px;
-  letter-spacing: 2px;
+  --cv-logo-emblem-size: 52px;
+  --cv-logo-emblem-radius: 14px;
+  --cv-logo-image-padding: 8px;
+  --cv-logo-title-size: 24px;
+  --cv-logo-subtitle-size: 11px;
+  --cv-logo-subtitle-tracking: 2px;
+  --cv-logo-gap: 14px;
 }
 
-.cv-logo--default .cv-logo__emblem {
-  width: 42px;
-  height: 42px;
-}
+/* ============================================================
+   Варианты — только цвета/фон, размеры не трогаем
+   ============================================================ */
 
 .cv-logo--light {
-  --cv-title: #1A1208;
+  --cv-title: #1a1208;
   --cv-subtitle: rgba(60, 45, 25, 0.55);
-}
-.cv-logo--light .cv-logo__emblem {
-  background: linear-gradient(180deg, #FFFFFF 0%, #F5EFE0 100%);
-  border-color: rgba(201, 169, 97, 0.5);
-  box-shadow:
+  --cv-emblem-bg: linear-gradient(180deg, #ffffff 0%, #f5efe0 100%);
+  --cv-emblem-border: rgba(201, 169, 97, 0.5);
+  --cv-emblem-shadow:
     0 4px 16px rgba(139, 111, 63, 0.15),
     0 1px 0 rgba(255, 255, 255, 0.9) inset;
 }
 
-.cv-logo--mono .cv-logo__emblem {
-  background: rgba(255, 255, 255, 0.04);
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: none;
+.cv-logo--mono {
+  --cv-emblem-bg: rgba(255, 255, 255, 0.04);
+  --cv-emblem-border: rgba(255, 255, 255, 0.1);
+  --cv-emblem-shadow: none;
 }
-.cv-logo--mono .cv-logo__title {
-  color: var(--cv-title);
-}
+
 .cv-logo--mono:hover .cv-logo__emblem {
   border-color: rgba(201, 169, 97, 0.4);
   box-shadow: 0 0 20px rgba(201, 169, 97, 0.2);
 }
 
+/* ============================================================
+   Адаптив
+   ============================================================ */
+
 @media (max-width: 640px) {
   .cv-logo__subtitle {
     display: none;
   }
-  .cv-logo--default .cv-logo__emblem {
-    width: 38px;
-    height: 38px;
+
+  /* На мобилке уменьшаем эмблему и заголовок у всех размеров,
+     кроме sm (он и так компактный). Используем те же токены. */
+  .cv-logo--md {
+    --cv-logo-emblem-size: 38px;
+    --cv-logo-title-size: 17px;
   }
-  .cv-logo__title { font-size: 17px; }
+
+  .cv-logo--lg {
+    --cv-logo-emblem-size: 44px;
+    --cv-logo-title-size: 20px;
+  }
+}
+
+/* ============================================================
+   Уважение к системным настройкам
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .cv-logo,
+  .cv-logo__emblem,
+  .cv-logo__image,
+  .cv-logo__emblem-shine {
+    transition-duration: 0.01ms !important;
+  }
+
+  .cv-logo:hover {
+    transform: none;
+  }
+
+  .cv-logo:hover .cv-logo__image {
+    transform: none;
+  }
+
+  .cv-logo:hover .cv-logo__emblem-shine {
+    left: -100%;
+  }
 }
 </style>

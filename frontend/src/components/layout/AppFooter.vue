@@ -1,11 +1,21 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 import AppLogo from './AppLogo.vue'
 
+/**
+ * Подвал приложения.
+ *
+ * Scroll-to-top здесь НЕ реализуется — он живёт в cv-layout
+ * (единственный fixed-элемент этого типа на странице).
+ *
+ * Правовые документы открываются в модалке поверх всего.
+ * Модалка блокирует скролл body через счётчик — это защищает
+ * от конфликта с MobileMenu в шапке, который тоже ставит
+ * overflow: hidden.
+ */
+
 const currentYear = new Date().getFullYear()
-const activeDocument = ref(null)
-const showScrollTop = ref(false)
 
 const navigationLinks = [
   { label: 'Каталог', to: '/announcements' },
@@ -51,7 +61,7 @@ const legalDocuments = {
       },
       {
         heading: '5. Изменение условий',
-        text: `Мы вправе изменять условия Соглашения, уведомляя Пользователей за 7 дней до вступления изменений в силу через интерфейс Платформы.`
+        text: `Мы вправе изменять условия Соглашения, уведомляя Пользователей за 7 дней до вступления в силу через интерфейс Платформы.`
       }
     ]
   },
@@ -175,41 +185,63 @@ const legalLinks = [
   { key: 'disputes', label: 'Споры' }
 ]
 
+const activeDocument = ref(null)
+
 const activeDoc = computed(() =>
   activeDocument.value ? legalDocuments[activeDocument.value] : null
 )
 
+/*
+  Счётчик scroll-lock'ов: если MobileMenu и модалка одновременно
+  открыты, overflow должен сбрасываться только когда закрылись оба.
+*/
+let scrollLockCount = 0
+function lockBodyScroll() {
+  scrollLockCount += 1
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = 'hidden'
+  }
+}
+function unlockBodyScroll() {
+  scrollLockCount = Math.max(0, scrollLockCount - 1)
+  if (scrollLockCount === 0 && typeof document !== 'undefined') {
+    document.body.style.overflow = ''
+  }
+}
+
+let isBodyLocked = false
+watch(activeDocument, (val) => {
+  if (val && !isBodyLocked) {
+    lockBodyScroll()
+    isBodyLocked = true
+  } else if (!val && isBodyLocked) {
+    unlockBodyScroll()
+    isBodyLocked = false
+  }
+})
+
 function openDocument(key) {
   activeDocument.value = key
-  document.body.style.overflow = 'hidden'
 }
 
 function closeDocument() {
   activeDocument.value = null
-  document.body.style.overflow = ''
 }
 
 function handleKeydown(e) {
   if (e.key === 'Escape' && activeDocument.value) closeDocument()
 }
 
-function scrollToTop() {
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-function handleScroll() {
-  showScrollTop.value = window.scrollY > 400
-}
-
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown)
-  window.addEventListener('scroll', handleScroll, { passive: true })
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
-  window.removeEventListener('scroll', handleScroll)
-  document.body.style.overflow = ''
+  if (isBodyLocked) {
+    unlockBodyScroll()
+    isBodyLocked = false
+  }
 })
 </script>
 
@@ -220,15 +252,16 @@ onUnmounted(() => {
     <div class="cv-footer__carbon" aria-hidden="true"></div>
 
     <div class="cv-footer__inner">
-      <div class="cv-footer__row cv-footer__row--main">
-        <RouterLink to="/" class="cv-footer__brand">
+      <!-- Группа 1: бренд + основная навигация -->
+      <div class="cv-footer__row cv-footer__row--top">
+        <RouterLink to="/" class="cv-footer__brand" aria-label="CarVibe — на главную">
           <AppLogo />
         </RouterLink>
 
         <nav class="cv-footer__nav" aria-label="Основная навигация">
           <RouterLink
             v-for="link in navigationLinks"
-            :key="link.label"
+            :key="link.to"
             :to="link.to"
             class="cv-footer__nav-link"
           >
@@ -239,41 +272,52 @@ onUnmounted(() => {
 
       <div class="cv-footer__divider" aria-hidden="true"></div>
 
-      <div class="cv-footer__row cv-footer__row--middle">
-        <div class="cv-footer__contacts">
-          <a href="mailto:support@carvibe.ru" class="cv-footer__contact">
-            <span class="cv-footer__contact-icon">✉</span>
-            support@carvibe.ru
-          </a>
-          <a href="tel:+78001234567" class="cv-footer__contact">
-            <span class="cv-footer__contact-icon">☎</span>
-            8 (800) 123-45-67
-          </a>
-        </div>
+      <!-- Группа 2: контакты + соцсети -->
+      <div class="cv-footer__row cv-footer__row--contacts">
+        <ul class="cv-footer__contacts">
+          <li>
+            <a href="mailto:support@carvibe.ru" class="cv-footer__contact">
+              <span class="cv-footer__contact-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="5" width="18" height="14" rx="2" />
+                  <path d="M3 7l9 6 9-6" />
+                </svg>
+              </span>
+              support@carvibe.ru
+            </a>
+          </li>
+          <li>
+            <a href="tel:+78001234567" class="cv-footer__contact">
+              <span class="cv-footer__contact-icon" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7 12.6 12.6 0 0 0 .7 2.8 2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.5 12.6 12.6 0 0 0 2.8.7 2 2 0 0 1 1.7 2z" />
+                </svg>
+              </span>
+              8 (800) 123-45-67
+            </a>
+          </li>
+        </ul>
 
-        <div class="cv-footer__socials">
-          <a
-            v-for="s in socials"
-            :key="s.id"
-            :href="s.href"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="cv-footer__social"
-            :aria-label="s.label"
-            :title="s.label"
-          >
-            {{ s.icon }}
-          </a>
-        </div>
+        <ul class="cv-footer__socials">
+          <li v-for="s in socials" :key="s.id">
+            <a
+              :href="s.href"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="cv-footer__social"
+              :aria-label="s.label"
+              :title="s.label"
+            >
+              {{ s.icon }}
+            </a>
+          </li>
+        </ul>
       </div>
 
       <div class="cv-footer__divider" aria-hidden="true"></div>
 
+      <!-- Группа 3: правовые ссылки + копирайт -->
       <div class="cv-footer__row cv-footer__row--bottom">
-        <span class="cv-footer__copyright">
-          © {{ currentYear }} CarVibe. Все права защищены.
-        </span>
-
         <nav class="cv-footer__legal" aria-label="Правовые документы">
           <button
             v-for="doc in legalLinks"
@@ -285,22 +329,12 @@ onUnmounted(() => {
             {{ doc.label }}
           </button>
         </nav>
+
+        <span class="cv-footer__copyright">
+          © {{ currentYear }} CarVibe. Все права защищены.
+        </span>
       </div>
     </div>
-
-    <Transition name="cv-scroll-top">
-      <button
-        v-if="showScrollTop"
-        class="cv-footer__scroll-top"
-        @click="scrollToTop"
-        aria-label="Наверх"
-        title="Наверх"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 19V5M5 12l7-7 7 7"/>
-        </svg>
-      </button>
-    </Transition>
   </footer>
 
   <Teleport to="body">
@@ -308,26 +342,34 @@ onUnmounted(() => {
       <div
         v-if="activeDoc"
         class="cv-legal"
-        @click.self="closeDocument"
         role="dialog"
         aria-modal="true"
+        aria-labelledby="cv-legal-title"
+        @click.self="closeDocument"
       >
         <div class="cv-legal__window">
           <header class="cv-legal__header">
             <div class="cv-legal__title-block">
               <span class="cv-legal__badge">📄 Документ</span>
-              <h2 class="cv-legal__title">{{ activeDoc.title }}</h2>
+              <h2 id="cv-legal-title" class="cv-legal__title">
+                {{ activeDoc.title }}
+              </h2>
               <div class="cv-legal__meta">
                 <span>Версия {{ activeDoc.version }}</span>
-                <span class="cv-legal__dot">•</span>
+                <span class="cv-legal__dot" aria-hidden="true">•</span>
                 <span>Редакция от {{ activeDoc.updated }}</span>
               </div>
             </div>
             <button
+              type="button"
               class="cv-legal__close"
-              @click="closeDocument"
               aria-label="Закрыть"
-            >×</button>
+              @click="closeDocument"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            </button>
           </header>
 
           <div class="cv-legal__body">
@@ -345,7 +387,13 @@ onUnmounted(() => {
             <span class="cv-legal__footer-note">
               По вопросам: <a href="mailto:legal@carvibe.ru">legal@carvibe.ru</a>
             </span>
-            <button class="cv-legal__btn" @click="closeDocument">Понятно</button>
+            <button
+              type="button"
+              class="cv-legal__btn"
+              @click="closeDocument"
+            >
+              Понятно
+            </button>
           </footer>
         </div>
       </div>
@@ -354,21 +402,46 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* ============================================================
+   Подвал
+   - Единые токены палитры и типографики
+   - Все ссылки — один стиль состояний (hover/focus/active)
+   - Mobile: три группы вертикально
+   - Scroll-to-top здесь НЕТ — он в cv-layout
+   ============================================================ */
+
 .cv-footer {
-  --cv-bg: #0A0A0C;
+  /* Layout-токены */
+  --cv-footer-max-width: 1240px;
+  --cv-footer-px: 28px;
+  --cv-footer-pt: 44px;
+  --cv-footer-pb: 28px;
+  --cv-footer-mt: 96px;
+  --cv-footer-gap: 24px;
+  --cv-footer-gap-sm: 12px;
+
+  /* Типографика — единый масштаб для всех ссылок и текста */
+  --cv-footer-link-size: 13px;
+  --cv-footer-link-weight: 500;
+  --cv-footer-small-size: 12.5px;
+  --cv-footer-nav-size: 13.5px;
+
+  /* Палитра (совпадает с шапкой и layout-ами) */
+  --cv-bg: #0a0a0c;
   --cv-bg-2: #121215;
   --cv-border: rgba(201, 169, 97, 0.12);
   --cv-border-soft: rgba(255, 255, 255, 0.06);
   --cv-text: rgba(245, 240, 230, 0.9);
-  --cv-text-2: rgba(220, 210, 195, 0.55);
-  --cv-text-3: rgba(200, 190, 175, 0.35);
-  --cv-bronze: #C9A961;
-  --cv-bronze-light: #E8D5A0;
-  --cv-bronze-dark: #8B6F3F;
-  --cv-copper: #B87755;
+  --cv-text-2: rgba(220, 210, 195, 0.65);
+  --cv-text-3: rgba(200, 190, 175, 0.42);
+  --cv-bronze: #c9a961;
+  --cv-bronze-light: #e8d5a0;
+  --cv-bronze-dark: #8b6f3f;
+  --cv-copper: #b87755;
+  --cv-focus: var(--cv-bronze-light);
 
   position: relative;
-  margin-top: 96px;
+  margin-top: var(--cv-footer-mt);
   background: linear-gradient(180deg, var(--cv-bg-2) 0%, var(--cv-bg) 100%);
   border-top: 1px solid var(--cv-border);
   color: var(--cv-text);
@@ -376,6 +449,7 @@ onUnmounted(() => {
   isolation: isolate;
 }
 
+/* --- Фон --- */
 .cv-footer__glow {
   position: absolute;
   border-radius: 50%;
@@ -419,63 +493,28 @@ onUnmounted(() => {
       rgba(255, 255, 255, 0.012) 1px,
       transparent 1px,
       transparent 4px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0.25) 0px,
-      rgba(0, 0, 0, 0.25) 1px,
-      transparent 1px,
-      transparent 6px
     );
   mask-image: radial-gradient(ellipse at center, black 20%, transparent 80%);
   -webkit-mask-image: radial-gradient(ellipse at center, black 20%, transparent 80%);
 }
 
+/* --- Контейнер --- */
 .cv-footer__inner {
   position: relative;
   z-index: 1;
-  max-width: 1240px;
+  max-width: var(--cv-footer-max-width);
   margin: 0 auto;
-  padding: 40px 28px 28px;
+  padding: var(--cv-footer-pt) var(--cv-footer-px) var(--cv-footer-pb);
 }
 
+/* --- Строки-группы --- */
 .cv-footer__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
+  gap: var(--cv-footer-gap);
   flex-wrap: wrap;
-}
-
-.cv-footer__brand {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  text-decoration: none;
-}
-
-.cv-footer__nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  flex-wrap: wrap;
-}
-.cv-footer__nav-link {
-  position: relative;
-  padding: 9px 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--cv-text-2);
-  text-decoration: none;
-  transition: all 0.2s ease;
-}
-.cv-footer__nav-link:hover {
-  color: var(--cv-bronze-light);
-  background: rgba(201, 169, 97, 0.06);
-}
-.cv-footer__nav-link.router-link-active {
-  color: var(--cv-bronze-light);
+  min-width: 0;
 }
 
 .cv-footer__divider {
@@ -491,35 +530,87 @@ onUnmounted(() => {
   );
 }
 
+/* --- Бренд --- */
+.cv-footer__brand {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  border-radius: 10px;
+  transition: transform 0.25s ease, filter 0.25s ease;
+  filter: drop-shadow(0 0 0 rgba(201, 169, 97, 0));
+}
+.cv-footer__brand:hover {
+  transform: translateY(-1px);
+  filter: drop-shadow(0 4px 20px rgba(201, 169, 97, 0.35));
+}
+
+/* --- Основная навигация --- */
+.cv-footer__nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+.cv-footer__nav-link {
+  position: relative;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: var(--cv-footer-nav-size);
+  font-weight: var(--cv-footer-link-weight);
+  color: var(--cv-text-2);
+  text-decoration: none;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+.cv-footer__nav-link:hover {
+  color: var(--cv-bronze-light);
+  background: rgba(201, 169, 97, 0.06);
+}
+.cv-footer__nav-link.router-link-active {
+  color: var(--cv-bronze-light);
+}
+
+/* --- Контакты --- */
 .cv-footer__contacts {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 20px;
   flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
 }
 .cv-footer__contact {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--cv-footer-link-size);
+  font-weight: var(--cv-footer-link-weight);
   color: var(--cv-text-2);
   text-decoration: none;
+  border-radius: 6px;
   transition: color 0.2s ease;
 }
 .cv-footer__contact:hover {
   color: var(--cv-bronze-light);
 }
 .cv-footer__contact-icon {
-  font-size: 13px;
-  opacity: 0.65;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--cv-bronze);
+  opacity: 0.85;
+  flex-shrink: 0;
 }
 
+/* --- Соцсети --- */
 .cv-footer__socials {
   display: flex;
   align-items: center;
   gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 .cv-footer__social {
   width: 38px;
@@ -535,39 +626,40 @@ onUnmounted(() => {
   text-decoration: none;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--cv-border-soft);
-  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition:
+    color 0.25s ease,
+    background 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease;
 }
 .cv-footer__social:hover {
-  color: #1A1208;
+  color: #1a1208;
   background: linear-gradient(135deg, var(--cv-bronze-light), var(--cv-bronze));
   border-color: transparent;
   transform: translateY(-3px);
   box-shadow: 0 10px 24px rgba(201, 169, 97, 0.35);
 }
 
-.cv-footer__copyright {
-  font-size: 12.5px;
-  color: var(--cv-text-3);
-  letter-spacing: 0.2px;
-}
-
+/* --- Правовые ссылки --- */
 .cv-footer__legal {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
+  min-width: 0;
 }
 .cv-footer__legal-link {
+  position: relative;
   padding: 6px 10px;
   border: none;
   background: transparent;
   border-radius: 8px;
-  font-size: 12.5px;
-  font-weight: 500;
+  font-size: var(--cv-footer-link-size);
+  font-weight: var(--cv-footer-link-weight);
   font-family: inherit;
   color: var(--cv-text-3);
   cursor: pointer;
-  position: relative;
   transition: color 0.2s ease;
 }
 .cv-footer__legal-link:hover {
@@ -588,44 +680,30 @@ onUnmounted(() => {
   width: calc(100% - 20px);
 }
 
-.cv-footer__scroll-top {
-  position: fixed;
-  bottom: 32px;
-  right: 32px;
-  z-index: 900;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  border: 1px solid rgba(201, 169, 97, 0.3);
-  background: rgba(18, 18, 21, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  color: var(--cv-bronze-light);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 24px rgba(201, 169, 97, 0.12);
-  transition: all 0.25s ease;
-}
-.cv-footer__scroll-top:hover {
-  background: linear-gradient(135deg, var(--cv-bronze-light), var(--cv-bronze));
-  color: #1A1208;
-  border-color: transparent;
-  transform: translateY(-4px);
-  box-shadow: 0 16px 44px rgba(201, 169, 97, 0.4);
+/* --- Copyright --- */
+.cv-footer__copyright {
+  font-size: var(--cv-footer-small-size);
+  font-weight: var(--cv-footer-link-weight);
+  color: var(--cv-text-3);
+  letter-spacing: 0.2px;
+  white-space: nowrap;
 }
 
-.cv-scroll-top-enter-active,
-.cv-scroll-top-leave-active {
-  transition: all 0.25s ease;
-}
-.cv-scroll-top-enter-from,
-.cv-scroll-top-leave-to {
-  opacity: 0;
-  transform: translateY(16px) scale(0.9);
+/* ============================================================
+   Единый focus-visible для всех интерактивных элементов
+   ============================================================ */
+.cv-footer__brand:focus-visible,
+.cv-footer__nav-link:focus-visible,
+.cv-footer__contact:focus-visible,
+.cv-footer__social:focus-visible,
+.cv-footer__legal-link:focus-visible {
+  outline: 2px solid var(--cv-focus);
+  outline-offset: 2px;
 }
 
+/* ============================================================
+   Модалка правового документа
+   ============================================================ */
 .cv-legal {
   position: fixed;
   inset: 0;
@@ -637,17 +715,19 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overscroll-behavior: contain;
 }
 
 .cv-legal__window {
   width: 100%;
   max-width: 760px;
   max-height: 88vh;
+  max-height: 88dvh;
   display: flex;
   flex-direction: column;
   background:
     linear-gradient(180deg, rgba(40, 32, 22, 0.5), transparent 30%),
-    linear-gradient(180deg, #1A1A20 0%, #101014 100%);
+    linear-gradient(180deg, #1a1a20 0%, #101014 100%);
   border: 1px solid rgba(201, 169, 97, 0.28);
   border-radius: 24px;
   box-shadow:
@@ -655,6 +735,7 @@ onUnmounted(() => {
     0 0 0 1px rgba(201, 169, 97, 0.08) inset,
     0 0 120px rgba(201, 169, 97, 0.1);
   overflow: hidden;
+  min-width: 0;
 }
 
 .cv-legal__header {
@@ -665,6 +746,11 @@ onUnmounted(() => {
   padding: 30px 36px 24px;
   border-bottom: 1px solid rgba(201, 169, 97, 0.16);
   background: linear-gradient(180deg, rgba(201, 169, 97, 0.08), transparent);
+  min-width: 0;
+}
+
+.cv-legal__title-block {
+  min-width: 0;
 }
 
 .cv-legal__badge {
@@ -675,7 +761,7 @@ onUnmounted(() => {
   font-weight: 700;
   letter-spacing: 0.6px;
   text-transform: uppercase;
-  color: #F0DDA8;
+  color: #f0dda8;
   background: rgba(201, 169, 97, 0.14);
   border: 1px solid rgba(201, 169, 97, 0.4);
   margin-bottom: 14px;
@@ -684,16 +770,18 @@ onUnmounted(() => {
 .cv-legal__title {
   font-size: 26px;
   font-weight: 700;
-  color: #FFFFFF;
+  color: #ffffff;
   margin: 0 0 10px;
   letter-spacing: -0.4px;
   line-height: 1.25;
   text-shadow: 0 1px 20px rgba(201, 169, 97, 0.15);
+  overflow-wrap: anywhere;
 }
 
 .cv-legal__meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   font-size: 13px;
   font-weight: 500;
@@ -703,58 +791,68 @@ onUnmounted(() => {
 
 .cv-legal__dot {
   opacity: 0.5;
-  color: #C9A961;
+  color: var(--cv-bronze);
 }
 
 .cv-legal__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 40px;
   height: 40px;
   border-radius: 12px;
   border: 1px solid rgba(201, 169, 97, 0.2);
   background: rgba(201, 169, 97, 0.06);
   color: rgba(240, 230, 210, 0.75);
-  font-size: 24px;
-  line-height: 1;
   cursor: pointer;
-  transition: all 0.2s;
   flex-shrink: 0;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 .cv-legal__close:hover {
   background: rgba(184, 119, 85, 0.2);
-  color: #F0DDA8;
+  color: #f0dda8;
   border-color: rgba(184, 119, 85, 0.5);
-  transform: rotate(90deg);
+  transform: scale(1.05);
+}
+.cv-legal__close:focus-visible {
+  outline: 2px solid var(--cv-focus);
+  outline-offset: 2px;
 }
 
 .cv-legal__body {
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 32px 40px 36px;
   scrollbar-width: thin;
   scrollbar-color: rgba(201, 169, 97, 0.35) transparent;
 }
-.cv-legal__body::-webkit-scrollbar { width: 8px; }
+.cv-legal__body::-webkit-scrollbar {
+  width: 8px;
+}
 .cv-legal__body::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.02);
 }
 .cv-legal__body::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #C9A961, #8B6F3F);
+  background: linear-gradient(180deg, #c9a961, #8b6f3f);
   border-radius: 4px;
 }
 .cv-legal__body::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #E8D5A0, #C9A961);
+  background: linear-gradient(180deg, #e8d5a0, #c9a961);
 }
 
 .cv-legal__section {
   margin-bottom: 32px;
   max-width: 62ch;
 }
-.cv-legal__section:last-child { margin-bottom: 0; }
+.cv-legal__section:last-child {
+  margin-bottom: 0;
+}
 
 .cv-legal__section-title {
   font-size: 16px;
   font-weight: 700;
-  color: #E8D5A0;
+  color: var(--cv-bronze-light);
   margin: 0 0 14px;
   letter-spacing: -0.15px;
   line-height: 1.4;
@@ -770,7 +868,7 @@ onUnmounted(() => {
   width: 3px;
   height: 18px;
   border-radius: 2px;
-  background: linear-gradient(180deg, #E8D5A0, #8B6F3F);
+  background: linear-gradient(180deg, var(--cv-bronze-light), var(--cv-bronze-dark));
 }
 
 .cv-legal__section-text {
@@ -780,6 +878,7 @@ onUnmounted(() => {
   margin: 0;
   white-space: pre-line;
   letter-spacing: 0.05px;
+  overflow-wrap: anywhere;
 }
 
 .cv-legal__footer {
@@ -790,36 +889,43 @@ onUnmounted(() => {
   padding: 22px 40px;
   border-top: 1px solid rgba(201, 169, 97, 0.14);
   background: linear-gradient(0deg, rgba(0, 0, 0, 0.4), transparent);
+  flex-wrap: wrap;
 }
 
 .cv-legal__footer-note {
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(240, 230, 210, 0.55);
+  font-size: var(--cv-footer-link-size);
+  font-weight: var(--cv-footer-link-weight);
+  color: rgba(240, 230, 210, 0.65);
 }
 .cv-legal__footer-note a {
-  color: #E8D5A0;
+  color: var(--cv-bronze-light);
   text-decoration: none;
   font-weight: 600;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
 }
 .cv-legal__footer-note a:hover {
-  color: #FFFFFF;
+  color: #ffffff;
   text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cv-legal__footer-note a:focus-visible {
+  outline: 2px solid var(--cv-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .cv-legal__btn {
   padding: 11px 28px;
   border-radius: 12px;
   border: none;
-  background: linear-gradient(135deg, #E8D5A0 0%, #C9A961 55%, #8B6F3F 100%);
-  color: #1A1208;
+  background: linear-gradient(135deg, #e8d5a0 0%, #c9a961 55%, #8b6f3f 100%);
+  color: #1a1208;
   font-size: 14px;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   letter-spacing: 0.2px;
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
   box-shadow:
     0 4px 20px rgba(201, 169, 97, 0.35),
     0 1px 0 rgba(255, 255, 255, 0.3) inset;
@@ -833,14 +939,21 @@ onUnmounted(() => {
 .cv-legal__btn:active {
   transform: translateY(0);
 }
+.cv-legal__btn:focus-visible {
+  outline: 2px solid var(--cv-focus);
+  outline-offset: 3px;
+}
 
+/* --- Анимации модалки --- */
 .cv-modal-enter-active,
 .cv-modal-leave-active {
   transition: opacity 0.25s ease;
 }
 .cv-modal-enter-active .cv-legal__window,
 .cv-modal-leave-active .cv-legal__window {
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.25s ease;
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.25s ease;
 }
 .cv-modal-enter-from,
 .cv-modal-leave-to {
@@ -852,56 +965,178 @@ onUnmounted(() => {
   opacity: 0;
 }
 
+/* ============================================================
+   Адаптив
+   ============================================================ */
+
+/* Планшет: контакты и соцсети — в столбик, право — тоже */
 @media (max-width: 900px) {
-  .cv-footer__row--middle {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 20px;
-  }
+  .cv-footer__row--contacts,
   .cv-footer__row--bottom {
     flex-direction: column;
     align-items: flex-start;
-    gap: 12px;
+    gap: var(--cv-footer-gap-sm);
   }
-  .cv-footer__legal {
-    justify-content: flex-start;
+
+  .cv-footer__copyright {
+    white-space: normal;
   }
 }
 
+/* Мобилка: всё вертикально, ссылки — на всю ширину */
 @media (max-width: 640px) {
-  .cv-footer { margin-top: 64px; }
-  .cv-footer__inner { padding: 32px 20px 24px; }
-  .cv-footer__row--main {
+  .cv-footer {
+    --cv-footer-mt: 64px;
+    --cv-footer-px: 20px;
+    --cv-footer-pt: 32px;
+    --cv-footer-pb: 24px;
+    --cv-footer-gap: 16px;
+  }
+
+  .cv-footer__row--top {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
   }
-  .cv-footer__nav { width: 100%; }
-  .cv-footer__scroll-top {
-    bottom: 20px;
-    right: 20px;
-    width: 42px;
-    height: 42px;
+
+  .cv-footer__nav {
+    width: 100%;
+    gap: 0;
   }
-  .cv-legal { padding: 12px; }
+
+  .cv-footer__nav-link {
+    padding: 10px 12px;
+  }
+
+  .cv-footer__contacts {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .cv-footer__socials {
+    flex-wrap: wrap;
+  }
+
+  .cv-footer__legal {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+  }
+
+  .cv-footer__legal-link {
+    padding: 8px 0;
+  }
+
+  .cv-footer__legal-link::after {
+    bottom: 4px;
+    left: 0;
+    transform: none;
+    width: 0;
+  }
+
+  .cv-footer__legal-link:hover::after {
+    width: 100%;
+  }
+
+  /* Модалка */
+  .cv-legal {
+    padding: 12px;
+  }
+
   .cv-legal__header,
   .cv-legal__body,
   .cv-legal__footer {
-    padding-left: 22px;
-    padding-right: 22px;
+    padding-left: 20px;
+    padding-right: 20px;
   }
-  .cv-legal__header { padding-top: 24px; padding-bottom: 20px; }
-  .cv-legal__body { padding-top: 24px; padding-bottom: 26px; }
-  .cv-legal__title { font-size: 21px; }
-  .cv-legal__section-title { font-size: 15px; }
-  .cv-legal__section-text { font-size: 14px; }
+
+  .cv-legal__header {
+    padding-top: 22px;
+    padding-bottom: 18px;
+  }
+
+  .cv-legal__body {
+    padding-top: 22px;
+    padding-bottom: 24px;
+  }
+
+  .cv-legal__title {
+    font-size: 21px;
+  }
+
+  .cv-legal__section-title {
+    font-size: 15px;
+  }
+
+  .cv-legal__section-text {
+    font-size: 14px;
+  }
+
   .cv-legal__footer {
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
-    padding-top: 18px;
-    padding-bottom: 18px;
+    padding-top: 16px;
+    padding-bottom: 16px;
   }
-  .cv-legal__btn { width: 100%; }
+
+  .cv-legal__btn {
+    width: 100%;
+  }
+}
+
+/* Узкая мобилка */
+@media (max-width: 480px) {
+  .cv-footer {
+    --cv-footer-px: 16px;
+  }
+
+  .cv-footer__nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cv-footer__nav-link {
+    padding: 10px 8px;
+  }
+
+  .cv-legal__title {
+    font-size: 19px;
+  }
+
+  .cv-legal__meta {
+    font-size: 12px;
+  }
+}
+
+/* ============================================================
+   Уважение к системным настройкам
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .cv-footer__brand,
+  .cv-footer__nav-link,
+  .cv-footer__contact,
+  .cv-footer__social,
+  .cv-footer__legal-link,
+  .cv-footer__legal-link::after,
+  .cv-legal__close,
+  .cv-legal__btn,
+  .cv-modal-enter-active,
+  .cv-modal-leave-active,
+  .cv-modal-enter-active .cv-legal__window,
+  .cv-modal-leave-active .cv-legal__window {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+
+  .cv-footer__brand:hover,
+  .cv-footer__social:hover,
+  .cv-legal__close:hover,
+  .cv-legal__btn:hover {
+    transform: none;
+  }
 }
 </style>
