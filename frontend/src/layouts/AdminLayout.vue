@@ -5,10 +5,39 @@ import AdminSidebar from '@/components/admin/AdminSidebar.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
 import ToastContainer from '@/components/common/ToastContainer.vue'
 
+/**
+ * Лейаут админ-панели.
+ *
+ * AdminSidebar — flex-ребёнок (position: static/relative), не fixed.
+ *   - принимает проп `is-open` (boolean)
+ *   - эмитит `close`
+ *   - на desktop: развёрнут/свёрнут через prop is-open
+ *   - на mobile: превращается в выезжающий drawer (правила внутри AdminSidebar.vue)
+ *
+ * Контент .cv-admin__content — flex: 1, min-width: 0, скролл внутри __main.
+ */
+
+const MOBILE_MAX = 1023 // < 1024px — мобильный режим (drawer)
+
 const route = useRoute()
-const isSidebarOpen = ref(true)
-const isMobile = ref(false)
+
+const mql =
+  typeof window !== 'undefined'
+    ? window.matchMedia(`(max-width: ${MOBILE_MAX}px)`)
+    : null
+
+const isMobile = ref(mql ? mql.matches : false)
+const isSidebarOpen = ref(!isMobile.value)
+
 const pageTitle = computed(() => route.meta?.title || 'Админ-панель')
+
+const todayLabel = computed(() =>
+  new Date().toLocaleDateString('ru-RU', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  })
+)
 
 function toggleSidebar() {
   isSidebarOpen.value = !isSidebarOpen.value
@@ -18,35 +47,77 @@ function closeSidebar() {
   isSidebarOpen.value = false
 }
 
-function handleResize() {
-  isMobile.value = window.innerWidth < 1024
-  isSidebarOpen.value = !isMobile.value
+function onMqlChange(event) {
+  isMobile.value = event.matches
+  isSidebarOpen.value = !event.matches
 }
 
+function onKeydown(event) {
+  if (event.key === 'Escape' && isMobile.value && isSidebarOpen.value) {
+    isSidebarOpen.value = false
+  }
+}
+
+// Закрываем drawer на мобильных при смене маршрута
+watch(
+  () => route.path,
+  () => {
+    if (isMobile.value && isSidebarOpen.value) {
+      isSidebarOpen.value = false
+    }
+  }
+)
+
+// Блокируем скролл body, пока открыт мобильный drawer
+watch([isMobile, isSidebarOpen], ([mobile, open]) => {
+  if (typeof document === 'undefined') return
+  const shouldLock = mobile && open
+  document.body.style.overflow = shouldLock ? 'hidden' : ''
+})
+
 onMounted(() => {
-  handleResize()
-  window.addEventListener('resize', handleResize)
+  if (mql) {
+    if (mql.addEventListener) mql.addEventListener('change', onMqlChange)
+    else mql.addListener(onMqlChange)
+  }
+  window.addEventListener('keydown', onKeydown)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', handleResize)
-})
-
-watch(() => route.path, () => {
-  if (isMobile.value) {
-    isSidebarOpen.value = false
+  if (mql) {
+    if (mql.removeEventListener) mql.removeEventListener('change', onMqlChange)
+    else mql.removeListener(onMqlChange)
+  }
+  window.removeEventListener('keydown', onKeydown)
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = ''
   }
 })
 </script>
 
 <template>
-  <div class="cv-admin" :class="{ 'cv-admin--sidebar-open': isSidebarOpen }">
+  <div
+    class="cv-admin"
+    :class="{
+      'cv-admin--expanded': !isMobile && isSidebarOpen,
+      'cv-admin--collapsed': !isMobile && !isSidebarOpen,
+      'cv-admin--mobile': isMobile,
+      'cv-admin--drawer-open': isMobile && isSidebarOpen
+    }"
+  >
     <div class="cv-admin__bg" aria-hidden="true">
       <div class="cv-admin__bg-orb cv-admin__bg-orb--1"></div>
       <div class="cv-admin__bg-orb cv-admin__bg-orb--2"></div>
       <div class="cv-admin__bg-orb cv-admin__bg-orb--3"></div>
       <div class="cv-admin__bg-grid"></div>
     </div>
+
+    <!-- Overlay: виден только когда открыт мобильный drawer -->
+    <div
+      class="cv-admin__overlay"
+      aria-hidden="true"
+      @click="closeSidebar"
+    ></div>
 
     <AdminSidebar
       :is-open="isSidebarOpen"
@@ -61,7 +132,10 @@ watch(() => route.path, () => {
           <div class="cv-admin__main-header">
             <div class="cv-admin__main-heading">
               <span class="cv-admin__main-eyebrow">
-                <span class="cv-admin__main-eyebrow-dot" aria-hidden="true"></span>
+                <span
+                  class="cv-admin__main-eyebrow-dot"
+                  aria-hidden="true"
+                ></span>
                 Панель управления
               </span>
               <h1 class="cv-admin__main-title">{{ pageTitle }}</h1>
@@ -69,11 +143,20 @@ watch(() => route.path, () => {
 
             <div class="cv-admin__main-meta">
               <span class="cv-admin__main-date">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                  <rect x="3" y="6" width="18" height="14" rx="2"/>
-                  <path d="M3 10h18M8 6V3M16 6V3"/>
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect x="3" y="6" width="18" height="14" rx="2" />
+                  <path d="M3 10h18M8 6V3M16 6V3" />
                 </svg>
-                {{ new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' }) }}
+                {{ todayLabel }}
               </span>
             </div>
           </div>
@@ -92,16 +175,40 @@ watch(() => route.path, () => {
 </template>
 
 <style scoped>
+/* ============================================================
+   Лейаут админки
+   - Корень: flex-контейнер, height: 100dvh, overflow: hidden
+   - AdminSidebar — flex-ребёнок слева (не fixed)
+   - .cv-admin__content — flex: 1, единственный скроллер внутри __main
+   - На мобилке AdminSidebar превращается в drawer (правила внутри него)
+   ============================================================ */
+
 .cv-admin {
+  /* Ширины сайдбара — доступны дочерним компонентам через CSS-каскад */
+  --cv-admin-sidebar-w: 264px;
+  --cv-admin-sidebar-w-collapsed: 76px;
+
+  /* Z-слои */
+  --cv-admin-z-content: 1;
+  --cv-admin-z-overlay: 40;
+  --cv-admin-z-sidebar: 50;
+
+  /* Палитра */
+  --cv-admin-bg: #0a0a0c;
+  --cv-admin-fg: rgba(245, 240, 230, 0.9);
+
   position: relative;
   display: flex;
-  min-height: 100vh;
-  background: #0A0A0C;
-  color: rgba(245, 240, 230, 0.9);
-  isolation: isolate;
+  height: 100vh;
+  height: 100svh;
+  height: 100dvh;
   overflow: hidden;
+  background: var(--cv-admin-bg);
+  color: var(--cv-admin-fg);
+  isolation: isolate;
 }
 
+/* --- Фон --- */
 .cv-admin__bg {
   position: fixed;
   inset: 0;
@@ -164,19 +271,58 @@ watch(() => route.path, () => {
   opacity: 0.5;
 }
 
+/* --- Overlay для мобильного drawer --- */
+.cv-admin__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--cv-admin-z-overlay);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+/* На десктопе overlay не нужен */
+@media (min-width: 1024px) {
+  .cv-admin__overlay {
+    display: none;
+  }
+}
+
+.cv-admin--drawer-open .cv-admin__overlay {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* --- Контент (flex: 1, справа от сайдбара) --- */
 .cv-admin__content {
   position: relative;
-  z-index: 1;
+  z-index: var(--cv-admin-z-content);
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 100vh;
+  min-height: 0;
+  height: 100%;
 }
 
+@media (max-width: 1023px) {
+  .cv-admin__content {
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+}
+
+/* --- Основной скроллер --- */
 .cv-admin__main {
   flex: 1;
+  min-height: 0; /* КРИТИЧНО: без этого внутренний скролл не работает во flex */
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   scrollbar-width: thin;
   scrollbar-color: rgba(201, 169, 97, 0.3) transparent;
 }
@@ -186,13 +332,13 @@ watch(() => route.path, () => {
 }
 
 .cv-admin__main::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #C9A961, #8B6F3F);
+  background: linear-gradient(180deg, #c9a961, #8b6f3f);
   border-radius: 5px;
-  border: 2px solid #0A0A0C;
+  border: 2px solid var(--cv-admin-bg);
 }
 
 .cv-admin__main::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #E8D5A0, #C9A961);
+  background: linear-gradient(180deg, #e8d5a0, #c9a961);
 }
 
 .cv-admin__main-inner {
@@ -202,8 +348,10 @@ watch(() => route.path, () => {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  min-width: 0;
 }
 
+/* --- Заголовок страницы --- */
 .cv-admin__main-header {
   display: flex;
   align-items: flex-end;
@@ -248,7 +396,7 @@ watch(() => route.path, () => {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #F5E6BC, #C9A961);
+  background: linear-gradient(135deg, #f5e6bc, #c9a961);
   box-shadow: 0 0 8px rgba(201, 169, 97, 0.7);
   animation: cvAdminPageDot 2.2s ease-in-out infinite;
   flex-shrink: 0;
@@ -261,12 +409,13 @@ watch(() => route.path, () => {
 
 .cv-admin__main-title {
   margin: 0;
-  font-size: 28px;
+  font-size: clamp(20px, 2.2vw, 28px);
   font-weight: 800;
   letter-spacing: -0.6px;
   line-height: 1.15;
   color: rgba(245, 240, 230, 0.95);
   text-shadow: 0 2px 24px rgba(201, 169, 97, 0.08);
+  overflow-wrap: anywhere;
 }
 
 .cv-admin__main-meta {
@@ -288,7 +437,7 @@ watch(() => route.path, () => {
   color: rgba(220, 210, 195, 0.75);
   background:
     linear-gradient(180deg, rgba(28, 24, 18, 0.5), rgba(15, 13, 10, 0.6)),
-    linear-gradient(180deg, #16161C 0%, #101014 100%);
+    linear-gradient(180deg, #16161c 0%, #101014 100%);
   border: 1px solid rgba(201, 169, 97, 0.18);
   text-transform: capitalize;
 }
@@ -298,6 +447,7 @@ watch(() => route.path, () => {
   flex-shrink: 0;
 }
 
+/* --- Переход страниц --- */
 .cv-admin-page-enter-active {
   transition: all 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
@@ -316,15 +466,31 @@ watch(() => route.path, () => {
   transform: translateY(-6px);
 }
 
+/* ============================================================
+   Подсказки для дочерних страниц
+   ============================================================ */
+.cv-admin__main-inner :deep(table) {
+  max-width: 100%;
+}
+
+.cv-admin__main-inner :deep(pre),
+.cv-admin__main-inner :deep(code) {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* --- Адаптив --- */
+@media (max-width: 1280px) {
+  .cv-admin__main-inner {
+    padding: 24px 24px 36px;
+    gap: 22px;
+  }
+}
+
 @media (max-width: 1024px) {
   .cv-admin__main-inner {
     padding: 20px 20px 32px;
     gap: 20px;
-  }
-
-  .cv-admin__main-title {
-    font-size: 24px;
-    letter-spacing: -0.4px;
   }
 
   .cv-admin__main-header {
@@ -336,11 +502,6 @@ watch(() => route.path, () => {
   .cv-admin__main-inner {
     padding: 16px 14px 24px;
     gap: 16px;
-  }
-
-  .cv-admin__main-title {
-    font-size: 20px;
-    letter-spacing: -0.3px;
   }
 
   .cv-admin__main-header {
@@ -364,6 +525,22 @@ watch(() => route.path, () => {
   .cv-admin__bg-orb--2 {
     width: 280px;
     height: 280px;
+  }
+}
+
+/* --- prefers-reduced-motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .cv-admin__bg-orb--1,
+  .cv-admin__bg-orb--2,
+  .cv-admin__bg-orb--3,
+  .cv-admin__main-eyebrow-dot {
+    animation: none;
+  }
+
+  .cv-admin__overlay,
+  .cv-admin-page-enter-active,
+  .cv-admin-page-leave-active {
+    transition: none;
   }
 }
 </style>

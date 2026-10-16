@@ -132,19 +132,45 @@ const features = [
 </template>
 
 <style scoped>
+/*
+  ВАЖНО для дочерних компонентов (form/inputs):
+  - На мобильных инпуты должны иметь font-size: 16px минимум, иначе iOS Safari
+    автоматически зумит страницу при фокусе.
+  - У длинных сообщений об ошибках используйте overflow-wrap: anywhere.
+*/
+
 .cv-auth {
+  /* Layout tokens */
+  --cv-auth-padding-x: 24px;
+  --cv-auth-padding-y: 40px;
+  --cv-auth-card-max-width: 560px;
+  --cv-auth-container-max-width: 1080px;
+
   position: relative;
+  /* Мобильная клавиатура: dvh корректно реагирует, svh/vh — fallback */
   min-height: 100vh;
+  min-height: 100svh;
+  min-height: 100dvh;
+
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 40px 24px;
-  background: #0A0A0C;
+  flex-direction: column;
+
+  padding: var(--cv-auth-padding-y) var(--cv-auth-padding-x);
+
+  background: #0a0a0c;
   color: rgba(245, 240, 230, 0.9);
   isolation: isolate;
-  overflow: hidden;
+
+  /* Клипаем только по горизонтали (для орбов), вертикальный скролл — рабочий */
+  overflow-x: hidden;
+  overflow-y: visible;
+
+  /* Отступ при программном скролле к элементу (актуально для клавиатуры) */
+  scroll-padding-block: 16px;
+  overscroll-behavior-y: contain;
 }
 
+/* --- Фон --- */
 .cv-auth__bg {
   position: absolute;
   inset: 0;
@@ -229,13 +255,23 @@ const features = [
   -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 90%);
 }
 
+/* --- Контейнер --- */
 .cv-auth__container {
   position: relative;
   z-index: 1;
+
   width: 100%;
-  max-width: 1080px;
+  max-width: var(--cv-auth-container-max-width);
+
+  /*
+    margin: auto вместо align-items: center на родителе —
+    контент центрируется, когда помещается,
+    и корректно скроллится, когда переполняется.
+  */
+  margin: auto;
+
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 56px;
   align-items: center;
 }
@@ -265,6 +301,7 @@ const features = [
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-width: 0;
 }
 
 .cv-auth__side-eyebrow {
@@ -289,7 +326,7 @@ const features = [
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #F5E6BC, #C9A961);
+  background: linear-gradient(135deg, #f5e6bc, #c9a961);
   box-shadow: 0 0 10px rgba(201, 169, 97, 0.8);
   animation: cvAuthDotPulse 2.2s ease-in-out infinite;
   flex-shrink: 0;
@@ -302,16 +339,17 @@ const features = [
 
 .cv-auth__side-title {
   margin: 0;
-  font-size: 40px;
+  font-size: clamp(24px, 3.4vw, 40px);
   font-weight: 800;
   letter-spacing: -1px;
   line-height: 1.1;
   color: rgba(245, 240, 230, 0.95);
+  overflow-wrap: anywhere;
 }
 
 .cv-auth__side-title-accent {
   display: block;
-  background: linear-gradient(135deg, #F5E6BC 0%, #C9A961 55%, #8B6F3F 100%);
+  background: linear-gradient(135deg, #f5e6bc 0%, #c9a961 55%, #8b6f3f 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -327,6 +365,7 @@ const features = [
   letter-spacing: 0.05px;
   line-height: 1.6;
   color: rgba(220, 210, 195, 0.65);
+  overflow-wrap: anywhere;
 }
 
 .cv-auth__side-features {
@@ -348,6 +387,11 @@ const features = [
   color: rgba(220, 210, 195, 0.8);
 }
 
+.cv-auth__side-feature-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .cv-auth__side-feature-icon {
   display: inline-flex;
   align-items: center;
@@ -356,8 +400,8 @@ const features = [
   height: 22px;
   flex-shrink: 0;
   border-radius: 7px;
-  color: #1A1208;
-  background: linear-gradient(135deg, #F5E6BC 0%, #C9A961 55%, #8B6F3F 100%);
+  color: #1a1208;
+  background: linear-gradient(135deg, #f5e6bc 0%, #c9a961 55%, #8b6f3f 100%);
   box-shadow: 0 4px 12px rgba(201, 169, 97, 0.35);
 }
 
@@ -418,6 +462,7 @@ const features = [
   letter-spacing: 0.05px;
   line-height: 1.55;
   color: rgba(245, 240, 230, 0.85);
+  overflow-wrap: anywhere;
 }
 
 .cv-auth__side-quote-author {
@@ -428,13 +473,20 @@ const features = [
   color: rgba(201, 169, 97, 0.75);
 }
 
+/* --- Карточка формы --- */
 .cv-auth__card {
   position: relative;
-  padding: 40px 42px;
+  width: 100%;
+  max-width: var(--cv-auth-card-max-width);
+  min-width: 0;
+  justify-self: end;
+
+  padding: clamp(22px, 3.2vw, 40px) clamp(20px, 3.2vw, 42px);
   border-radius: 1.5rem;
+
   background:
     linear-gradient(180deg, rgba(28, 24, 18, 0.5) 0%, rgba(15, 13, 10, 0.65) 100%),
-    linear-gradient(180deg, #14141A 0%, #0E0E12 100%);
+    linear-gradient(180deg, #14141a 0%, #0e0e12 100%);
   border: 1px solid rgba(201, 169, 97, 0.24);
   box-shadow:
     0 32px 80px rgba(0, 0, 0, 0.6),
@@ -504,6 +556,13 @@ const features = [
 .cv-auth__card-inner {
   position: relative;
   z-index: 1;
+  min-width: 0;
+  /*
+    Защита от «разрыва» карточки длинными строками:
+    сообщения об ошибках, URL, длинные email и т.п.
+  */
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .cv-auth__card-accent {
@@ -524,6 +583,7 @@ const features = [
   z-index: 3;
 }
 
+/* --- Переход страниц внутри карточки --- */
 .cv-auth-page-enter-active {
   transition: all 0.35s cubic-bezier(0.34, 1.2, 0.64, 1);
 }
@@ -542,6 +602,7 @@ const features = [
   transform: translateY(-6px);
 }
 
+/* --- Футер --- */
 .cv-auth__footer {
   grid-column: 1 / -1;
   display: flex;
@@ -571,7 +632,7 @@ const features = [
 }
 
 .cv-auth__back:hover {
-  color: #E8D5A0;
+  color: #e8d5a0;
   background: rgba(201, 169, 97, 0.1);
   border-color: rgba(201, 169, 97, 0.42);
   transform: translateX(-2px);
@@ -605,15 +666,29 @@ const features = [
 }
 
 .cv-auth__copyright-link:hover {
-  color: #E8D5A0;
+  color: #e8d5a0;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
+/* --- Адаптив --- */
+@media (max-width: 1280px) {
+  .cv-auth {
+    --cv-auth-container-max-width: 1000px;
+    --cv-auth-padding-x: 22px;
+    --cv-auth-padding-y: 32px;
+  }
+}
+
 @media (max-width: 1024px) {
+  .cv-auth {
+    --cv-auth-padding-x: 20px;
+    --cv-auth-padding-y: 28px;
+  }
+
   .cv-auth__container {
-    grid-template-columns: 1fr;
-    max-width: 520px;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 560px;
     gap: 32px;
   }
 
@@ -632,7 +707,6 @@ const features = [
   }
 
   .cv-auth__side-title {
-    font-size: 30px;
     letter-spacing: -0.7px;
   }
 
@@ -655,6 +729,10 @@ const features = [
     max-width: 440px;
   }
 
+  .cv-auth__card {
+    justify-self: center;
+  }
+
   .cv-auth__footer {
     flex-direction: column;
     text-align: center;
@@ -664,8 +742,8 @@ const features = [
 
 @media (max-width: 640px) {
   .cv-auth {
-    padding: 20px 14px;
-    align-items: flex-start;
+    --cv-auth-padding-x: 14px;
+    --cv-auth-padding-y: 20px;
   }
 
   .cv-auth__container {
@@ -673,7 +751,6 @@ const features = [
   }
 
   .cv-auth__side-title {
-    font-size: 24px;
     letter-spacing: -0.5px;
   }
 
@@ -695,7 +772,6 @@ const features = [
   }
 
   .cv-auth__card {
-    padding: 26px 20px;
     border-radius: 1.25rem;
   }
 
@@ -712,6 +788,38 @@ const features = [
     font-size: 10.5px;
     justify-content: center;
     text-align: center;
+  }
+}
+
+/* Короткие экраны (landscape-мобилки, нетбуки) */
+@media (max-height: 700px) and (min-width: 1025px) {
+  .cv-auth {
+    --cv-auth-padding-y: 24px;
+  }
+
+  .cv-auth__container {
+    gap: 40px;
+  }
+}
+
+/* --- Уважение к системным настройкам --- */
+@media (prefers-reduced-motion: reduce) {
+  .cv-auth__bg-orb--1,
+  .cv-auth__bg-orb--2,
+  .cv-auth__bg-orb--3,
+  .cv-auth__side-dot {
+    animation: none;
+  }
+
+  .cv-auth-page-enter-active,
+  .cv-auth-page-leave-active,
+  .cv-auth__side-logo,
+  .cv-auth__back {
+    transition: none;
+  }
+
+  .cv-auth__back:hover {
+    transform: none;
   }
 }
 </style>
