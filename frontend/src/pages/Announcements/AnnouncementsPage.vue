@@ -12,8 +12,6 @@ import AnnouncementSkeleton from '@/components/announcements/AnnouncementSkeleto
 import QuickViewModal from '@/components/announcements/QuickViewModal.vue'
 import BasePagination from '@/components/common/BasePagination.vue'
 import BaseButton from '@/components/common/BaseButton.vue'
-import BaseInput from '@/components/common/BaseInput.vue'
-import EmptyState from '@/components/common/EmptyState.vue'
 import ErrorMessage from '@/components/common/ErrorMessage.vue'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 
@@ -32,10 +30,15 @@ const isInitializing = ref(false)
 const perPageOptions = [12, 24, 48, 96]
 
 /* ============================================================
- *  Quick view (модалка быстрого просмотра)
+ *  Форматирование значений фильтров
  * ============================================================ */
-const quickViewOpen = ref(false)
-const quickViewAnnouncement = ref(null)
+
+const formatPrice = (v) => `${Number(v).toLocaleString('ru-RU')} ₽`
+const formatMileage = (v) => `${Number(v).toLocaleString('ru-RU')} км`
+
+/* ============================================================
+ *  Быстрые фильтры
+ * ============================================================ */
 
 const quickFilters = [
   { key: 'popular', label: 'Популярные', icon: 'fire', params: { sortBy: 'views', sortOrder: 'desc' } },
@@ -48,49 +51,33 @@ const quickFilters = [
 
 const activeFilters = computed(() => {
   const filters = []
-  const filterMap = {
-    brand: { label: 'Марка', display: v => v },
-    model: { label: 'Модель', display: v => v },
-    bodyType: { label: 'Кузов', display: v => v },
-    transmission: { label: 'КПП', display: v => v },
-    drive: { label: 'Привод', display: v => v },
-    color: { label: 'Цвет', display: v => v },
-    city: { label: 'Город', display: v => v }
+  const f = announcementsStore.filters
+
+  const simpleMap = {
+    brand: 'Марка',
+    model: 'Модель',
+    bodyType: 'Кузов',
+    transmission: 'КПП',
+    drive: 'Привод',
+    color: 'Цвет',
+    city: 'Город'
   }
 
-  Object.keys(filterMap).forEach(key => {
-    if (announcementsStore.filters[key]) {
-      filters.push({
-        key,
-        label: filterMap[key].label,
-        value: announcementsStore.filters[key]
-      })
-    }
+  Object.keys(simpleMap).forEach((key) => {
+    if (f[key]) filters.push({ key, label: simpleMap[key], value: f[key] })
   })
 
-  if (announcementsStore.filters.priceFrom) {
-    filters.push({ key: 'priceFrom', label: 'Цена от', value: announcementsStore.filters.priceFrom })
-  }
-  if (announcementsStore.filters.priceTo) {
-    filters.push({ key: 'priceTo', label: 'Цена до', value: announcementsStore.filters.priceTo })
-  }
-  if (announcementsStore.filters.yearFrom) {
-    filters.push({ key: 'yearFrom', label: 'Год от', value: announcementsStore.filters.yearFrom })
-  }
-  if (announcementsStore.filters.yearTo) {
-    filters.push({ key: 'yearTo', label: 'Год до', value: announcementsStore.filters.yearTo })
-  }
-  if (announcementsStore.filters.mileageTo) {
-    filters.push({ key: 'mileageTo', label: 'Пробег до', value: announcementsStore.filters.mileageTo })
-  }
+  if (f.priceFrom) filters.push({ key: 'priceFrom', label: 'Цена от', value: formatPrice(f.priceFrom) })
+  if (f.priceTo) filters.push({ key: 'priceTo', label: 'Цена до', value: formatPrice(f.priceTo) })
+  if (f.yearFrom) filters.push({ key: 'yearFrom', label: 'Год от', value: String(f.yearFrom) })
+  if (f.yearTo) filters.push({ key: 'yearTo', label: 'Год до', value: String(f.yearTo) })
+  if (f.mileageTo) filters.push({ key: 'mileageTo', label: 'Пробег до', value: formatMileage(f.mileageTo) })
 
   return filters
 })
 
 const hasActiveFilters = computed(() => activeFilters.value.length > 0)
-
 const totalItems = computed(() => announcementsStore.totalItems || 0)
-
 const currentPage = computed(() => announcementsStore.filters.page || 1)
 const perPage = computed(() => announcementsStore.filters.perPage || 24)
 
@@ -102,6 +89,7 @@ const endItem = computed(() =>
 )
 
 const resultsText = computed(() => {
+  if (loading.value) return 'Загрузка…'
   if (!totalItems.value) return 'Нет результатов'
   return `Показано ${startItem.value.toLocaleString('ru-RU')}–${endItem.value.toLocaleString('ru-RU')} из ${totalItems.value.toLocaleString('ru-RU')}`
 })
@@ -120,9 +108,58 @@ const isQuickActive = (quick) => {
   return Object.entries(quick.params).every(([key, value]) => f[key] === value)
 }
 
+/* ============================================================
+ *  Query params <-> фильтры
+ * ============================================================ */
+
+const SORT_DEFAULT = { sortBy: 'createdAt', sortOrder: 'desc' }
+
+function filtersToQuery() {
+  const query = {}
+  const f = announcementsStore.filters
+
+  Object.keys(f).forEach((key) => {
+    if (!f[key]) return
+    if (['page', 'perPage', 'sortBy', 'sortOrder'].includes(key)) return
+    query[key] = f[key]
+  })
+
+  if (f.sortBy && f.sortOrder &&
+      (f.sortBy !== SORT_DEFAULT.sortBy || f.sortOrder !== SORT_DEFAULT.sortOrder)) {
+    query.sort = `${f.sortBy}-${f.sortOrder}`
+  }
+
+  return query
+}
+
+function queryToFilters(query) {
+  const filters = {}
+  Object.keys(query).forEach((key) => {
+    if (key === 'sort') {
+      const [sortBy, sortOrder] = String(query.sort).split('-')
+      filters.sortBy = sortBy
+      filters.sortOrder = sortOrder
+    } else if (!['page', 'perPage'].includes(key)) {
+      filters[key] = query[key]
+    }
+  })
+  return filters
+}
+
+function queriesEqual(a, b) {
+  const ka = Object.keys(a).sort()
+  const kb = Object.keys(b).sort()
+  if (ka.length !== kb.length) return false
+  return ka.every((k, i) => k === kb[i] && String(a[k]) === String(b[k]))
+}
+
+/* ============================================================
+ *  Основные действия
+ * ============================================================ */
+
 function updateFilters(newFilters) {
-  announcementsStore.updateFilters(newFilters)
-  announcementsStore.updateFilters({ page: 1 })
+  // Один вызов стора с явным сбросом страницы
+  announcementsStore.updateFilters({ ...newFilters, page: 1 })
   syncQueryParams()
   loadAnnouncements()
 }
@@ -135,11 +172,8 @@ function resetFilters() {
 }
 
 function removeFilter(key) {
-  const newFilters = { ...announcementsStore.filters }
-  newFilters[key] = ''
-  if (key === 'search') {
-    searchInput.value = ''
-  }
+  const newFilters = { ...announcementsStore.filters, [key]: '' }
+  if (key === 'search') searchInput.value = ''
   updateFilters(newFilters)
 }
 
@@ -149,8 +183,13 @@ function toggleQuickFilter(quick) {
   const newFilters = { ...f }
 
   if (isActive) {
-    Object.keys(quick.params).forEach(key => {
-      if (key === 'sortBy' || key === 'sortOrder') return
+    Object.keys(quick.params).forEach((key) => {
+      if (key === 'sortBy' || key === 'sortOrder') {
+        // Сброс сортировки к дефолту при снятии quick-фильтра
+        newFilters.sortBy = SORT_DEFAULT.sortBy
+        newFilters.sortOrder = SORT_DEFAULT.sortOrder
+        return
+      }
       newFilters[key] = ''
     })
   } else {
@@ -161,25 +200,7 @@ function toggleQuickFilter(quick) {
 }
 
 function syncQueryParams() {
-  const query = {}
-  const filters = announcementsStore.filters
-
-  Object.keys(filters).forEach(key => {
-    if (
-      filters[key] &&
-      key !== 'page' &&
-      key !== 'perPage' &&
-      key !== 'sortBy' &&
-      key !== 'sortOrder'
-    ) {
-      query[key] = filters[key]
-    }
-  })
-
-  if (filters.sortBy && filters.sortOrder && (filters.sortBy !== 'createdAt' || filters.sortOrder !== 'desc')) {
-    query.sort = `${filters.sortBy}-${filters.sortOrder}`
-  }
-
+  const query = filtersToQuery()
   router.replace({ path: '/announcements', query })
 }
 
@@ -189,11 +210,12 @@ async function loadAnnouncements() {
   try {
     await announcementsStore.fetchAnnouncements()
   } catch (err) {
-    error.value = err.message
+    error.value = err.message || 'Не удалось загрузить объявления'
   } finally {
     loading.value = false
     nextTick(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      const prefersReduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      window.scrollTo({ top: 0, behavior: prefersReduced ? 'auto' : 'smooth' })
     })
   }
 }
@@ -217,8 +239,11 @@ function handlePerPageChange(value) {
 }
 
 /* ============================================================
- *  Quick view / compare / share — обработчики событий из Grid
+ *  Quick view / compare / share
  * ============================================================ */
+
+const quickViewOpen = ref(false)
+const quickViewAnnouncement = ref(null)
 
 function handleQuickView(announcement) {
   if (!announcement) return
@@ -228,12 +253,10 @@ function handleQuickView(announcement) {
 
 function handleCompare(announcement) {
   if (!announcement) return
+  // TODO: полноценное сравнение — отдельная фича
   const text = `Сравнение: ${announcement.title || announcement.brand || 'объявление'}`
-  if (typeof toastStore.info === 'function') {
-    toastStore.info(text)
-  } else {
-    toastStore.success(text)
-  }
+  if (typeof toastStore.info === 'function') toastStore.info(text)
+  else toastStore.success(text)
 }
 
 function handleShare(announcement) {
@@ -246,7 +269,6 @@ function handleShare(announcement) {
       .then(() => toastStore.success('Ссылка скопирована'))
       .catch(() => toastStore.error('Не удалось скопировать ссылку'))
   } else {
-    // Фолбэк для не-secure контекста
     try {
       const ta = document.createElement('textarea')
       ta.value = url
@@ -275,7 +297,7 @@ async function saveSearch() {
       filters: { ...announcementsStore.filters }
     })
     toastStore.success('Поиск сохранён')
-  } catch (err) {
+  } catch {
     toastStore.error('Не удалось сохранить поиск')
   }
 }
@@ -285,58 +307,57 @@ function generateSearchName() {
   const parts = []
   if (f.brand) parts.push(f.brand)
   if (f.model) parts.push(f.model)
-  if (f.priceTo) parts.push(`до ${Math.round(f.priceTo / 1000000)} млн`)
+  if (f.priceTo) parts.push(`до ${formatPrice(f.priceTo)}`)
   if (f.city) parts.push(f.city)
   return parts.join(' · ') || 'Мой поиск'
 }
 
+/* ============================================================
+ *  Watchers
+ * ============================================================ */
+
+// Debounce по вводу в строку поиска
 let searchDebounce = null
 watch(searchInput, (value) => {
+  if (isInitializing.value) return
   if (searchDebounce) clearTimeout(searchDebounce)
   searchDebounce = setTimeout(() => {
-    if (value !== announcementsStore.filters.search) {
+    if (value.trim() !== (announcementsStore.filters.search || '')) {
       updateFilters({ search: value.trim() })
     }
   }, 500)
 })
 
+// Реакция на изменения query извне (back/forward, прямая ссылка)
 watch(
   () => route.query,
-  (newQuery) => {
+  async (newQuery) => {
     if (isInitializing.value) return
-    if (Object.keys(newQuery).length || Object.keys(announcementsStore.filters).length) {
-      const newFilters = {}
-      Object.keys(newQuery).forEach(key => {
-        if (key === 'sort') {
-          const [sortBy, sortOrder] = newQuery.sort.split('-')
-          newFilters.sortBy = sortBy
-          newFilters.sortOrder = sortOrder
-        } else {
-          newFilters[key] = newQuery[key]
-        }
-      })
-      if (Object.keys(newFilters).length) {
-        announcementsStore.updateFilters(newFilters)
-      }
-    }
+
+    // Игнорируем собственный router.replace из syncQueryParams
+    if (queriesEqual(newQuery, filtersToQuery())) return
+
+    const newFilters = queryToFilters(newQuery)
+    announcementsStore.updateFilters({ ...newFilters, page: 1 })
+
+    // Синхронизируем строку поиска
+    searchInput.value = newFilters.search || ''
+
+    await loadAnnouncements()
   }
 )
+
+/* ============================================================
+ *  Lifecycle
+ * ============================================================ */
 
 onMounted(async () => {
   isInitializing.value = true
 
   if (Object.keys(route.query).length) {
-    const initFilters = {}
-    Object.keys(route.query).forEach(key => {
-      if (key === 'sort') {
-        const [sortBy, sortOrder] = route.query.sort.split('-')
-        initFilters.sortBy = sortBy
-        initFilters.sortOrder = sortOrder
-      } else {
-        initFilters[key] = route.query[key]
-      }
-    })
-    announcementsStore.updateFilters(initFilters)
+    const initFilters = queryToFilters(route.query)
+    announcementsStore.updateFilters({ ...initFilters, page: 1 })
+    searchInput.value = initFilters.search || ''
   }
 
   await loadAnnouncements()
@@ -361,14 +382,17 @@ onUnmounted(() => {
       <header class="cv-cat__header">
         <div class="cv-cat__header-left">
           <span class="cv-cat__eyebrow">
-            <span class="cv-cat__eyebrow-dot" aria-hidden="true"></span>
+            <span class="cv-cat__eyebrow-dot" aria-hidden="true" />
             Каталог автомобилей
           </span>
 
           <h1 class="cv-cat__title">Каталог автомобилей</h1>
 
-          <p class="cv-cat__subtitle">
-            <template v-if="totalItems">
+          <p class="cv-cat__subtitle" aria-live="polite" aria-atomic="true">
+            <template v-if="loading">
+              Загрузка результатов…
+            </template>
+            <template v-else-if="totalItems">
               Найдено <strong>{{ totalItems.toLocaleString('ru-RU') }} {{ countWord }}</strong>
               · {{ resultsText }}
             </template>
@@ -380,20 +404,20 @@ onUnmounted(() => {
 
         <div v-if="hasActiveFilters" class="cv-cat__header-actions">
           <BaseButton variant="outline" size="lg" @click="saveSearch">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-              <path d="M17 21v-8H7v8M7 3v5h8"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+              <path d="M17 21v-8H7v8M7 3v5h8" />
             </svg>
             Сохранить поиск
           </BaseButton>
         </div>
       </header>
 
-      <section class="cv-cat__quick">
+      <section class="cv-cat__quick" aria-label="Быстрые фильтры">
         <div class="cv-cat__quick-label">
           <span class="cv-cat__quick-icon" aria-hidden="true">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M13 2L4.5 13H11l-1 9L18.5 11H12l1-9z"/>
+              <path d="M13 2L4.5 13H11l-1 9L18.5 11H12l1-9z" />
             </svg>
           </span>
           Быстрые фильтры:
@@ -406,29 +430,30 @@ onUnmounted(() => {
             type="button"
             class="cv-cat__quick-chip"
             :class="{ 'cv-cat__quick-chip--active': isQuickActive(quick) }"
+            :aria-pressed="isQuickActive(quick)"
             @click="toggleQuickFilter(quick)"
           >
             <span class="cv-cat__quick-chip-icon" aria-hidden="true">
               <svg v-if="quick.icon === 'fire'" width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2c1 3 3 4 5 6a7 7 0 1 1-14 0c0-2 1-4 3-5 0 2 1 3 2 3 1 0 1-1 1-2 0-1 0-2 1-3 0 1 1 1 2 1z"/>
+                <path d="M12 2c1 3 3 4 5 6a7 7 0 1 1-14 0c0-2 1-4 3-5 0 2 1 3 2 3 1 0 1-1 1-2 0-1 0-2 1-3 0 1 1 1 2 1z" />
               </svg>
               <svg v-else-if="quick.icon === 'sparkles'" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z"/>
-                <path d="M5 3v4M3 5h4"/>
+                <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z" />
+                <path d="M5 3v4M3 5h4" />
               </svg>
               <svg v-else-if="quick.icon === 'money'" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="6" width="18" height="12" rx="2"/>
-                <circle cx="12" cy="12" r="2.5"/>
+                <rect x="3" y="6" width="18" height="12" rx="2" />
+                <circle cx="12" cy="12" r="2.5" />
               </svg>
               <svg v-else-if="quick.icon === 'bolt'" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M13 2L4.5 13H11l-1 9L18.5 11H12l1-9z"/>
+                <path d="M13 2L4.5 13H11l-1 9L18.5 11H12l1-9z" />
               </svg>
               <svg v-else-if="quick.icon === 'suv'" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M5 13l1.7-4.5A2 2 0 0 1 8.6 7h6.8a2 2 0 0 1 1.9 1.5L19 13"/>
-                <path d="M4 13h16v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5z"/>
+                <path d="M5 13l1.7-4.5A2 2 0 0 1 8.6 7h6.8a2 2 0 0 1 1.9 1.5L19 13" />
+                <path d="M4 13h16v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H7v1a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-5z" />
               </svg>
               <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M8 6v12M16 6v12M6 10h4M14 10h4M6 14h4M14 14h4"/>
+                <path d="M8 6v12M16 6v12M6 10h4M14 10h4M6 14h4M14 14h4" />
               </svg>
             </span>
             {{ quick.label }}
@@ -436,12 +461,12 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="cv-cat__toolbar">
+      <section class="cv-cat__toolbar" aria-label="Панель поиска и сортировки">
         <div class="cv-cat__toolbar-search">
           <span class="cv-cat__toolbar-search-icon" aria-hidden="true">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="7"/>
-              <path d="M20 20l-3.5-3.5"/>
+              <circle cx="11" cy="11" r="7" />
+              <path d="M20 20l-3.5-3.5" />
             </svg>
           </span>
           <input
@@ -449,6 +474,7 @@ onUnmounted(() => {
             type="text"
             placeholder="Поиск по марке или модели..."
             class="cv-cat__toolbar-input"
+            aria-label="Поиск по каталогу"
             @keydown.enter="handleSearchSubmit"
           />
         </div>
@@ -463,6 +489,7 @@ onUnmounted(() => {
             <select
               :value="perPage"
               class="cv-cat__per-page-select"
+              aria-label="Объявлений на странице"
               @change="handlePerPageChange($event.target.value)"
             >
               <option v-for="opt in perPageOptions" :key="opt" :value="opt">
@@ -471,55 +498,58 @@ onUnmounted(() => {
             </select>
             <span class="cv-cat__per-page-arrow" aria-hidden="true">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 9l6 6 6-6"/>
+                <path d="M6 9l6 6 6-6" />
               </svg>
             </span>
           </div>
 
-          <div class="cv-cat__view">
+          <div class="cv-cat__view" role="group" aria-label="Вид отображения">
             <button
               type="button"
               class="cv-cat__view-btn"
               :class="{ 'cv-cat__view-btn--active': viewMode === 'grid' }"
+              :aria-pressed="viewMode === 'grid'"
               aria-label="Сетка"
               @click="viewMode = 'grid'"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                <rect x="14" y="14" width="7" height="7" rx="1"/>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
               </svg>
             </button>
             <button
               type="button"
               class="cv-cat__view-btn"
               :class="{ 'cv-cat__view-btn--active': viewMode === 'list' }"
+              :aria-pressed="viewMode === 'list'"
               aria-label="Список"
               @click="viewMode = 'list'"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 6h18M3 12h18M3 18h18"/>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 6h18M3 12h18M3 18h18" />
               </svg>
             </button>
           </div>
         </div>
       </section>
 
-      <section v-if="hasActiveFilters" class="cv-cat__active">
+      <section v-if="hasActiveFilters" class="cv-cat__active" aria-label="Активные фильтры">
         <div class="cv-cat__active-chips">
           <button
             v-for="filter in activeFilters"
             :key="filter.key"
             type="button"
             class="cv-cat__active-chip"
+            :aria-label="`Убрать фильтр ${filter.label}: ${filter.value}`"
             @click="removeFilter(filter.key)"
           >
             <span class="cv-cat__active-chip-label">{{ filter.label }}:</span>
             <span class="cv-cat__active-chip-value">{{ filter.value }}</span>
             <span class="cv-cat__active-chip-close" aria-hidden="true">
               <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 4l8 8M12 4l-8 8"/>
+                <path d="M4 4l8 8M12 4l-8 8" />
               </svg>
             </span>
           </button>
@@ -530,8 +560,8 @@ onUnmounted(() => {
           class="cv-cat__active-reset"
           @click="resetFilters"
         >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
           </svg>
           Сбросить все
         </button>
@@ -540,28 +570,27 @@ onUnmounted(() => {
       <button
         type="button"
         class="cv-cat__mobile-toolbar"
+        :aria-expanded="isFilterMobileOpen"
         @click="isFilterMobileOpen = true"
       >
         <span class="cv-cat__mobile-toolbar-icon" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 6h18M6 12h12M10 18h4"/>
+            <path d="M3 6h18M6 12h12M10 18h4" />
           </svg>
         </span>
         <span class="cv-cat__mobile-toolbar-label">
           Фильтры
-          <template v-if="activeFilters.length">
-            · {{ activeFilters.length }}
-          </template>
+          <template v-if="activeFilters.length"> · {{ activeFilters.length }}</template>
         </span>
         <span class="cv-cat__mobile-toolbar-arrow" aria-hidden="true">
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 4l4 4-4 4"/>
+            <path d="M6 4l4 4-4 4" />
           </svg>
         </span>
       </button>
 
       <div class="cv-cat__content">
-        <aside class="cv-cat__sidebar">
+        <aside class="cv-cat__sidebar" aria-label="Фильтры">
           <AnnouncementFilters
             :filters="announcementsStore.filters"
             @update:filters="updateFilters"
@@ -587,8 +616,8 @@ onUnmounted(() => {
             <div class="cv-cat__empty-content">
               <span class="cv-cat__empty-icon" aria-hidden="true">
                 <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="11" cy="11" r="7"/>
-                  <path d="M20 20l-3.5-3.5"/>
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M20 20l-3.5-3.5" />
                 </svg>
               </span>
 
@@ -600,9 +629,9 @@ onUnmounted(() => {
 
               <div class="cv-cat__empty-actions">
                 <BaseButton size="lg" @click="resetFilters">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/>
-                    <path d="M21 3v5h-5"/>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M21 12a9 9 0 1 1-3-6.7L21 8" />
+                    <path d="M21 3v5h-5" />
                   </svg>
                   Сбросить фильтры
                 </BaseButton>
@@ -647,7 +676,18 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* ============================================================
+   Каталог
+   - Единый контейнер (--cat-container-px/--cat-container-max)
+   - Состояния: loading / error / empty / список
+   - Мобильная панель фильтров — отдельный компонент
+   ============================================================ */
+
 .cv-cat {
+  --cat-container-max: 1440px;
+  --cat-container-px: 48px;
+  --cat-sidebar-w: 300px;
+
   position: relative;
   padding: 20px 0 60px;
   isolation: isolate;
@@ -665,7 +705,7 @@ onUnmounted(() => {
   position: absolute;
   border-radius: 50%;
   filter: blur(120px);
-  opacity: 0.35;
+  opacity: 0.3;
 }
 
 .cv-cat__bg-orb--1 {
@@ -676,7 +716,6 @@ onUnmounted(() => {
   background: radial-gradient(circle, rgba(201, 169, 97, 0.28), transparent 70%);
   animation: cvCatOrb 22s ease-in-out infinite;
 }
-
 .cv-cat__bg-orb--2 {
   bottom: -20%;
   right: -10%;
@@ -685,7 +724,6 @@ onUnmounted(() => {
   background: radial-gradient(circle, rgba(184, 119, 85, 0.18), transparent 70%);
   animation: cvCatOrb 26s ease-in-out infinite reverse;
 }
-
 @keyframes cvCatOrb {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(40px, -30px) scale(1.08); }
@@ -694,14 +732,15 @@ onUnmounted(() => {
 .cv-cat__container {
   position: relative;
   z-index: 1;
-  max-width: 1440px;
+  max-width: var(--cat-container-max);
   margin: 0 auto;
-  padding: 0 48px;
+  padding: 0 var(--cat-container-px);
   display: flex;
   flex-direction: column;
   gap: 20px;
 }
 
+/* ---------- Header ---------- */
 .cv-cat__header {
   display: flex;
   align-items: flex-end;
@@ -709,7 +748,6 @@ onUnmounted(() => {
   gap: 20px;
   flex-wrap: wrap;
 }
-
 .cv-cat__header-left {
   display: flex;
   flex-direction: column;
@@ -717,7 +755,6 @@ onUnmounted(() => {
   min-width: 0;
   flex: 1;
 }
-
 .cv-cat__eyebrow {
   display: inline-flex;
   align-items: center;
@@ -728,22 +765,19 @@ onUnmounted(() => {
   text-transform: uppercase;
   color: rgba(201, 169, 97, 0.85);
 }
-
 .cv-cat__eyebrow-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #F5E6BC, #C9A961);
+  background: linear-gradient(135deg, #f5e6bc, #c9a961);
   box-shadow: 0 0 10px rgba(201, 169, 97, 0.8);
   animation: cvCatDot 2.2s ease-in-out infinite;
 }
-
 @keyframes cvCatDot {
   0%, 100% { opacity: 0.7; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.2); }
 }
-
 .cv-cat__title {
   margin: 0;
   font-size: 36px;
@@ -752,34 +786,30 @@ onUnmounted(() => {
   line-height: 1.15;
   color: rgba(245, 240, 230, 0.98);
 }
-
 .cv-cat__subtitle {
   margin: 0;
   font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.05px;
   line-height: 1.5;
   color: rgba(220, 210, 195, 0.6);
 }
-
 .cv-cat__subtitle strong {
-  color: #E8D5A0;
+  color: #e8d5a0;
   font-weight: 800;
 }
-
 .cv-cat__header-actions {
   display: inline-flex;
   gap: 10px;
   flex-shrink: 0;
 }
 
+/* ---------- Quick chips ---------- */
 .cv-cat__quick {
   display: flex;
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
 }
-
 .cv-cat__quick-label {
   display: inline-flex;
   align-items: center;
@@ -791,20 +821,17 @@ onUnmounted(() => {
   color: rgba(200, 190, 175, 0.5);
   flex-shrink: 0;
 }
-
 .cv-cat__quick-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: rgba(201, 169, 97, 0.7);
 }
-
 .cv-cat__quick-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-
 .cv-cat__quick-chip {
   display: inline-flex;
   align-items: center;
@@ -813,36 +840,30 @@ onUnmounted(() => {
   font-family: inherit;
   font-size: 12.5px;
   font-weight: 650;
-  letter-spacing: 0.1px;
   color: rgba(220, 210, 195, 0.75);
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(201, 169, 97, 0.18);
   border-radius: 999px;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.34, 1.2, 0.64, 1);
   white-space: nowrap;
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
-
 .cv-cat__quick-chip:hover {
-  color: #E8D5A0;
+  color: #e8d5a0;
   background: rgba(201, 169, 97, 0.1);
   border-color: rgba(201, 169, 97, 0.42);
   transform: translateY(-1px);
 }
-
-.cv-cat__quick-chip:active {
-  transform: translateY(0) scale(0.97);
+.cv-cat__quick-chip:focus-visible {
+  outline: 2px solid #e8d5a0;
+  outline-offset: 2px;
 }
-
 .cv-cat__quick-chip--active {
-  color: #1A1208;
-  background: linear-gradient(135deg, #F5E6BC 0%, #C9A961 55%, #8B6F3F 100%);
+  color: #1a1208;
+  background: linear-gradient(135deg, #f5e6bc 0%, #c9a961 55%, #8b6f3f 100%);
   border-color: rgba(232, 213, 160, 0.5);
-  box-shadow:
-    0 4px 14px rgba(201, 169, 97, 0.4),
-    0 1px 0 rgba(255, 245, 214, 0.4) inset;
+  box-shadow: 0 4px 14px rgba(201, 169, 97, 0.35);
 }
-
 .cv-cat__quick-chip-icon {
   display: inline-flex;
   align-items: center;
@@ -851,6 +872,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+/* ---------- Toolbar ---------- */
 .cv-cat__toolbar {
   display: flex;
   align-items: center;
@@ -859,14 +881,10 @@ onUnmounted(() => {
   flex-wrap: wrap;
   padding: 14px 18px;
   border-radius: 14px;
-  background:
-    linear-gradient(180deg, rgba(28, 24, 18, 0.4), rgba(15, 13, 10, 0.5)),
-    linear-gradient(180deg, #14141A 0%, #0E0E12 100%);
+  background: linear-gradient(180deg, rgba(28, 24, 18, 0.4), rgba(15, 13, 10, 0.5));
   border: 1px solid rgba(201, 169, 97, 0.16);
   position: relative;
-  isolation: isolate;
 }
-
 .cv-cat__toolbar::before {
   content: '';
   position: absolute;
@@ -877,7 +895,6 @@ onUnmounted(() => {
   background: linear-gradient(90deg, transparent, rgba(232, 213, 160, 0.22) 50%, transparent);
   pointer-events: none;
 }
-
 .cv-cat__toolbar-search {
   position: relative;
   flex: 1;
@@ -889,14 +906,12 @@ onUnmounted(() => {
   background: rgba(0, 0, 0, 0.2);
   border: 1.5px solid rgba(201, 169, 97, 0.18);
   border-radius: 11px;
-  transition: all 0.25s ease;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
-
 .cv-cat__toolbar-search:focus-within {
   border-color: rgba(201, 169, 97, 0.55);
   box-shadow: 0 0 0 3px rgba(201, 169, 97, 0.1);
 }
-
 .cv-cat__toolbar-search-icon {
   display: inline-flex;
   align-items: center;
@@ -904,7 +919,6 @@ onUnmounted(() => {
   color: rgba(201, 169, 97, 0.7);
   flex-shrink: 0;
 }
-
 .cv-cat__toolbar-input {
   flex: 1;
   min-width: 0;
@@ -912,36 +926,30 @@ onUnmounted(() => {
   font-family: inherit;
   font-size: 13.5px;
   font-weight: 500;
-  letter-spacing: 0.05px;
   color: rgba(245, 240, 230, 0.95);
   background: transparent;
   border: none;
   outline: none;
 }
-
 .cv-cat__toolbar-input::placeholder {
   color: rgba(200, 190, 175, 0.4);
 }
-
 .cv-cat__toolbar-controls {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
 }
-
 .cv-cat__per-page {
   position: relative;
   display: inline-flex;
   align-items: center;
 }
-
 .cv-cat__per-page-select {
   padding: 10px 32px 10px 12px;
   font-family: inherit;
   font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.05px;
   color: rgba(220, 210, 195, 0.85);
   background: rgba(0, 0, 0, 0.2);
   border: 1.5px solid rgba(201, 169, 97, 0.18);
@@ -950,23 +958,15 @@ onUnmounted(() => {
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
-  transition: all 0.22s ease;
   min-width: 100px;
+  transition: border-color 0.2s ease;
 }
-
-.cv-cat__per-page-select:hover {
-  border-color: rgba(201, 169, 97, 0.4);
-}
-
-.cv-cat__per-page-select:focus {
-  border-color: rgba(201, 169, 97, 0.6);
-}
-
+.cv-cat__per-page-select:hover { border-color: rgba(201, 169, 97, 0.4); }
+.cv-cat__per-page-select:focus { border-color: rgba(201, 169, 97, 0.6); }
 .cv-cat__per-page-select option {
-  background: #16161C;
+  background: #16161c;
   color: rgba(245, 240, 230, 0.92);
 }
-
 .cv-cat__per-page-arrow {
   position: absolute;
   right: 10px;
@@ -978,7 +978,6 @@ onUnmounted(() => {
   color: rgba(201, 169, 97, 0.75);
   pointer-events: none;
 }
-
 .cv-cat__view {
   display: inline-flex;
   gap: 3px;
@@ -987,7 +986,6 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(201, 169, 97, 0.14);
 }
-
 .cv-cat__view-btn {
   display: inline-flex;
   align-items: center;
@@ -999,21 +997,19 @@ onUnmounted(() => {
   border: none;
   border-radius: 7px;
   cursor: pointer;
-  transition: all 0.22s ease;
+  transition: color 0.2s ease, background 0.2s ease;
 }
-
-.cv-cat__view-btn:hover {
-  color: #E8D5A0;
+.cv-cat__view-btn:hover { color: #e8d5a0; }
+.cv-cat__view-btn:focus-visible {
+  outline: 2px solid #e8d5a0;
+  outline-offset: 2px;
 }
-
 .cv-cat__view-btn--active {
-  color: #1A1208;
-  background: linear-gradient(135deg, #F5E6BC 0%, #C9A961 55%, #8B6F3F 100%);
-  box-shadow:
-    0 4px 12px rgba(201, 169, 97, 0.35),
-    0 1px 0 rgba(255, 245, 214, 0.4) inset;
+  color: #1a1208;
+  background: linear-gradient(135deg, #f5e6bc 0%, #c9a961 55%, #8b6f3f 100%);
 }
 
+/* ---------- Active filters ---------- */
 .cv-cat__active {
   display: flex;
   align-items: center;
@@ -1021,7 +1017,6 @@ onUnmounted(() => {
   flex-wrap: wrap;
   padding: 4px 0;
 }
-
 .cv-cat__active-chips {
   display: flex;
   flex-wrap: wrap;
@@ -1029,7 +1024,6 @@ onUnmounted(() => {
   flex: 1;
   min-width: 0;
 }
-
 .cv-cat__active-chip {
   display: inline-flex;
   align-items: center;
@@ -1038,26 +1032,23 @@ onUnmounted(() => {
   font-family: inherit;
   font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.05px;
-  color: #E8D5A0;
+  color: #e8d5a0;
   background: linear-gradient(135deg, rgba(201, 169, 97, 0.14), rgba(201, 169, 97, 0.04));
   border: 1px solid rgba(201, 169, 97, 0.32);
   border-radius: 999px;
   cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.34, 1.2, 0.64, 1);
   white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
-
 .cv-cat__active-chip:hover {
   background: linear-gradient(135deg, rgba(201, 169, 97, 0.22), rgba(201, 169, 97, 0.08));
   border-color: rgba(232, 213, 160, 0.5);
   transform: translateY(-1px);
 }
-
-.cv-cat__active-chip:active {
-  transform: translateY(0) scale(0.96);
+.cv-cat__active-chip:focus-visible {
+  outline: 2px solid #e8d5a0;
+  outline-offset: 2px;
 }
-
 .cv-cat__active-chip-label {
   font-size: 10px;
   font-weight: 800;
@@ -1065,13 +1056,11 @@ onUnmounted(() => {
   text-transform: uppercase;
   color: rgba(201, 169, 97, 0.7);
 }
-
 .cv-cat__active-chip-value {
-  max-width: 140px;
+  max-width: 160px;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .cv-cat__active-chip-close {
   display: inline-flex;
   align-items: center;
@@ -1083,15 +1072,12 @@ onUnmounted(() => {
   background: rgba(201, 169, 97, 0.15);
   border-radius: 50%;
   flex-shrink: 0;
-  transition: all 0.22s ease;
+  transition: color 0.2s ease, background 0.2s ease;
 }
-
 .cv-cat__active-chip:hover .cv-cat__active-chip-close {
-  color: #1A1208;
-  background: linear-gradient(135deg, #F5E6BC, #C9A961);
-  transform: rotate(90deg);
+  color: #1a1208;
+  background: linear-gradient(135deg, #f5e6bc, #c9a961);
 }
-
 .cv-cat__active-reset {
   display: inline-flex;
   align-items: center;
@@ -1100,23 +1086,26 @@ onUnmounted(() => {
   font-family: inherit;
   font-size: 11.5px;
   font-weight: 650;
-  letter-spacing: 0.1px;
-  color: #E8A88A;
+  color: #e8a88a;
   background: rgba(184, 119, 85, 0.08);
   border: 1px solid rgba(184, 119, 85, 0.28);
   border-radius: 9px;
   cursor: pointer;
-  transition: all 0.22s ease;
   white-space: nowrap;
   flex-shrink: 0;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
-
 .cv-cat__active-reset:hover {
   background: rgba(184, 119, 85, 0.18);
   border-color: rgba(184, 119, 85, 0.5);
   transform: translateY(-1px);
 }
+.cv-cat__active-reset:focus-visible {
+  outline: 2px solid #e8d5a0;
+  outline-offset: 2px;
+}
 
+/* ---------- Mobile toolbar ---------- */
 .cv-cat__mobile-toolbar {
   display: none;
   align-items: center;
@@ -1127,34 +1116,32 @@ onUnmounted(() => {
   font-family: inherit;
   font-size: 13px;
   font-weight: 650;
-  letter-spacing: 0.1px;
   color: rgba(220, 210, 195, 0.85);
-  background:
-    linear-gradient(180deg, rgba(28, 24, 18, 0.5), rgba(15, 13, 10, 0.6)),
-    linear-gradient(180deg, #16161C 0%, #101014 100%);
+  background: linear-gradient(180deg, rgba(28, 24, 18, 0.5), rgba(15, 13, 10, 0.6));
   border: 1.5px solid rgba(201, 169, 97, 0.22);
   border-radius: 12px;
   cursor: pointer;
-  transition: all 0.22s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
-
-.cv-cat__mobile-toolbar:active {
-  transform: scale(0.98);
+.cv-cat__mobile-toolbar:hover {
+  border-color: rgba(201, 169, 97, 0.4);
 }
-
+.cv-cat__mobile-toolbar:active { transform: scale(0.98); }
+.cv-cat__mobile-toolbar:focus-visible {
+  outline: 2px solid #e8d5a0;
+  outline-offset: 2px;
+}
 .cv-cat__mobile-toolbar-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #E8D5A0;
+  color: #e8d5a0;
   flex-shrink: 0;
 }
-
 .cv-cat__mobile-toolbar-label {
   flex: 1;
   text-align: center;
 }
-
 .cv-cat__mobile-toolbar-arrow {
   display: inline-flex;
   align-items: center;
@@ -1163,12 +1150,12 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+/* ---------- Content ---------- */
 .cv-cat__content {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: var(--cat-sidebar-w) minmax(0, 1fr);
   gap: 24px;
 }
-
 .cv-cat__sidebar {
   position: sticky;
   top: 90px;
@@ -1179,50 +1166,40 @@ onUnmounted(() => {
   scrollbar-color: rgba(201, 169, 97, 0.3) transparent;
   padding-right: 4px;
 }
-
-.cv-cat__sidebar::-webkit-scrollbar {
-  width: 6px;
-}
-
+.cv-cat__sidebar::-webkit-scrollbar { width: 6px; }
 .cv-cat__sidebar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #C9A961, #8B6F3F);
+  background: linear-gradient(180deg, #c9a961, #8b6f3f);
   border-radius: 3px;
 }
-
 .cv-cat__results {
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 24px;
 }
-
 .cv-cat__grid {
   display: grid;
   gap: 22px;
 }
-
 .cv-cat__grid--grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
-
 .cv-cat__grid--list {
   grid-template-columns: 1fr;
   gap: 14px;
 }
 
+/* ---------- Empty ---------- */
 .cv-cat__empty {
   position: relative;
   padding: 72px 32px 64px;
   border-radius: 1.25rem;
-  background:
-    linear-gradient(180deg, rgba(28, 24, 18, 0.3) 0%, rgba(15, 13, 10, 0.4) 100%),
-    linear-gradient(180deg, #14141A 0%, #0E0E12 100%);
+  background: linear-gradient(180deg, rgba(28, 24, 18, 0.3) 0%, rgba(15, 13, 10, 0.4) 100%);
   border: 1px solid rgba(201, 169, 97, 0.16);
   overflow: hidden;
   isolation: isolate;
   text-align: center;
 }
-
 .cv-cat__empty-orb {
   position: absolute;
   top: 50%;
@@ -1235,15 +1212,8 @@ onUnmounted(() => {
   filter: blur(80px);
   pointer-events: none;
   z-index: 0;
-  opacity: 0.7;
-  animation: cvCatEmptyOrb 4s ease-in-out infinite;
+  opacity: 0.6;
 }
-
-@keyframes cvCatEmptyOrb {
-  0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
-  50% { opacity: 0.85; transform: translate(-50%, -50%) scale(1.08); }
-}
-
 .cv-cat__empty-content {
   position: relative;
   z-index: 1;
@@ -1254,7 +1224,6 @@ onUnmounted(() => {
   max-width: 480px;
   margin: 0 auto;
 }
-
 .cv-cat__empty-icon {
   display: inline-flex;
   align-items: center;
@@ -1263,42 +1232,25 @@ onUnmounted(() => {
   height: 88px;
   margin-bottom: 12px;
   border-radius: 24px;
-  color: #E8D5A0;
-  background:
-    linear-gradient(180deg, rgba(28, 24, 18, 0.5) 0%, rgba(15, 13, 10, 0.6) 100%),
-    linear-gradient(180deg, #16161C 0%, #101014 100%);
+  color: #e8d5a0;
+  background: linear-gradient(180deg, rgba(28, 24, 18, 0.5) 0%, rgba(15, 13, 10, 0.6) 100%);
   border: 1px solid rgba(201, 169, 97, 0.24);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(201, 169, 97, 0.05) inset,
-    0 1px 0 rgba(232, 213, 160, 0.08) inset,
-    0 0 60px rgba(201, 169, 97, 0.15);
-  animation: cvCatEmptyFloat 4s ease-in-out infinite;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
-
-@keyframes cvCatEmptyFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-
 .cv-cat__empty-title {
   margin: 0;
   font-size: 19px;
   font-weight: 700;
-  letter-spacing: -0.2px;
   line-height: 1.3;
   color: rgba(245, 240, 230, 0.92);
 }
-
 .cv-cat__empty-text {
   margin: 0 0 20px;
   font-size: 13.5px;
   font-weight: 500;
-  letter-spacing: 0.05px;
   line-height: 1.6;
   color: rgba(220, 210, 195, 0.6);
 }
-
 .cv-cat__empty-actions {
   display: flex;
   align-items: center;
@@ -1307,14 +1259,15 @@ onUnmounted(() => {
   justify-content: center;
 }
 
+/* ---------- Адаптив ---------- */
 @media (max-width: 1280px) {
-  .cv-cat__container { padding: 0 32px; }
-  .cv-cat__content { grid-template-columns: 280px minmax(0, 1fr); gap: 20px; }
-  .cv-cat__grid--grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .cv-cat { --cat-container-px: 32px; --cat-sidebar-w: 280px; }
+  .cv-cat__content { gap: 20px; }
+  .cv-cat__grid--grid { gap: 18px; }
 }
 
 @media (max-width: 1024px) {
-  .cv-cat__container { padding: 0 24px; }
+  .cv-cat { --cat-container-px: 24px; }
   .cv-cat__title { font-size: 28px; letter-spacing: -0.6px; }
 
   .cv-cat__sidebar { display: none; }
@@ -1324,8 +1277,8 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-  .cv-cat { padding: 12px 0 40px; }
-  .cv-cat__container { padding: 0 20px; gap: 16px; }
+  .cv-cat { padding: 12px 0 40px; --cat-container-px: 20px; }
+  .cv-cat__container { gap: 16px; }
 
   .cv-cat__header { gap: 12px; align-items: flex-start; }
   .cv-cat__header-left { width: 100%; }
@@ -1337,7 +1290,12 @@ onUnmounted(() => {
   .cv-cat__quick-label { font-size: 10px; }
   .cv-cat__quick-chip { font-size: 12px; padding: 7px 12px; }
 
-  .cv-cat__toolbar { flex-direction: column; align-items: stretch; padding: 12px; gap: 10px; }
+  .cv-cat__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px;
+    gap: 10px;
+  }
   .cv-cat__toolbar-search { min-width: 0; }
   .cv-cat__toolbar-controls { justify-content: space-between; flex-wrap: wrap; }
   .cv-cat__per-page { flex: 1; }
@@ -1345,8 +1303,7 @@ onUnmounted(() => {
 
   .cv-cat__grid--grid { grid-template-columns: 1fr; gap: 12px; }
 
-  .cv-cat__active { gap: 8px; }
-  .cv-cat__active-chip-value { max-width: 100px; }
+  .cv-cat__active-chip-value { max-width: 120px; }
 
   .cv-cat__empty { padding: 52px 20px 44px; border-radius: 1rem; }
   .cv-cat__empty-icon { width: 72px; height: 72px; border-radius: 20px; }
@@ -1357,7 +1314,32 @@ onUnmounted(() => {
 }
 
 @media (max-width: 480px) {
+  .cv-cat { --cat-container-px: 16px; }
   .cv-cat__title { font-size: 22px; }
   .cv-cat__quick-label { display: none; }
+}
+
+/* ---------- Системные настройки ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .cv-cat__bg-orb--1,
+  .cv-cat__bg-orb--2,
+  .cv-cat__eyebrow-dot {
+    animation: none;
+  }
+
+  .cv-cat__quick-chip,
+  .cv-cat__active-chip,
+  .cv-cat__active-reset,
+  .cv-cat__mobile-toolbar,
+  .cv-cat__view-btn {
+    transition-duration: 0.01ms !important;
+  }
+
+  .cv-cat__quick-chip:hover,
+  .cv-cat__active-chip:hover,
+  .cv-cat__active-reset:hover,
+  .cv-cat__mobile-toolbar:active {
+    transform: none;
+  }
 }
 </style>
